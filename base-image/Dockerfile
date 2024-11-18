@@ -1,5 +1,5 @@
 # Start with a lightweight Linux base image
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 # Set environment variables
 ENV PATH="/root/.local/bin:$PATH"
