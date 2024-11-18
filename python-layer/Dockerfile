@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip and install common Python tools
-RUN pip3 install --upgrade pip setuptools wheel \
+RUN pip3 install --upgrade pip setuptools wheel --break-system-packages\
     && pip3 install \
         virtualenv \
         pytest \
