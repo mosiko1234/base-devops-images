@@ -4,6 +4,7 @@ FROM debian:bullseye-slim
 # Set environment variables
 ENV PATH="/root/.local/bin:$PATH"
 
+USER root
 # Update system packages and install essential tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
