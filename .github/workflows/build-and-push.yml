@@ -36,12 +36,18 @@ jobs:
       working-directory: ./python-layer
       run: |
         docker build \
+          --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
           --build-arg PYTHON_VERSION=${{ matrix.python_version }} \
           -t ${{ secrets.DOCKERHUB_REPO }}/python:${{ matrix.python_version }} .
         docker push ${{ secrets.DOCKERHUB_REPO }}/python:${{ matrix.python_version }}
 
 
-        
+        run: |
+        docker build \
+          --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
+          -t ${{ secrets.DOCKERHUB_REPO }}/python-layer:latest .
+        docker push ${{ secrets.DOCKERHUB_REPO }}/python-layer:latest        
+
 #    - name: Build and Push Java Layer
 #      working-directory: ./java-layer
 #      run: |

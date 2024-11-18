@@ -49,8 +49,8 @@ RUN curl -L "https://gitlab-runner-downloads.s3.amazonaws.com/v16.5.0/binaries/g
 
 
 # Add a non-root user for security
-RUN useradd -ms /bin/bash devops
-USER devops
+#RUN useradd -ms /bin/bash devops
+#USER devops
 
 # Set working directory
 WORKDIR /workspace
