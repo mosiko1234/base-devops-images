@@ -1,5 +1,5 @@
-# Use the Base Image
-FROM base-image:latest
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
 
 # Add Python installation
 ARG PYTHON_VERSION=3.11

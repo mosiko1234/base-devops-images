@@ -34,6 +34,11 @@ jobs:
       run: |
         docker build \
           --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
+          --target=lint \
+          -t ${{ secrets.DOCKERHUB_REPO }}/python-layer:lint .
+        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/python-layer:lint
+        docker build \
+          --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
           -t ${{ secrets.DOCKERHUB_REPO }}/python-layer:latest .
         docker push ${{ secrets.DOCKERHUB_REPO }}/python-layer:latest
 
