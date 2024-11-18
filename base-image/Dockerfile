@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
     unzip \
     wget \
+    vim \
     ca-certificates \
     openssh-client \
     && apt-get clean \

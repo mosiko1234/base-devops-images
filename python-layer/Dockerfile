@@ -10,13 +10,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip and install common Python tools
-RUN pip3 install --upgrade pip setuptools wheel --break-system-packages\
-    && pip3 install \
-        virtualenv \
-        pytest \
-        pylint \
-        black \
-        flake8
+## Upgrade pip and install common Python tools
+#RUN pip3 install --upgrade pip setuptools wheel --break-system-packages\
+#    && pip3 install \
+#        virtualenv \
+#        pytest \
+#        pylint \
+#        black \
+#        flake8
 
 CMD ["python3"]
