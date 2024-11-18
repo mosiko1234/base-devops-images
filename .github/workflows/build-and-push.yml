@@ -1,0 +1,47 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Images to DockerHub
+    runs-on: ubuntu-latest
+
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+      DOCKERHUB_REPO: your-dockerhub-repo-name
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Log in to DockerHub
+      run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+    - name: Build and Push Base Image
+      working-directory: ./base-image
+      run: |
+        docker build -t $DOCKERHUB_REPO/base-image:latest .
+        docker push $DOCKERHUB_REPO/base-image:latest
+
+    - name: Build and Push Python Layer
+      working-directory: ./python-layer
+      run: |
+        docker build -t $DOCKERHUB_REPO/python-layer:latest .
+        docker push $DOCKERHUB_REPO/python-layer:latest
+
+    - name: Build and Push Java Layer
+      working-directory: ./java-layer
+      run: |
+        docker build -t $DOCKERHUB_REPO/java-layer:latest .
+        docker push $DOCKERHUB_REPO/java-layer:latest
+
+    - name: Build and Push Node.js Layer
+      working-directory: ./nodejs-layer
+      run: |
+        docker build -t $DOCKERHUB_REPO/nodejs-layer:latest .
+        docker push $DOCKERHUB_REPO/nodejs-layer:latest

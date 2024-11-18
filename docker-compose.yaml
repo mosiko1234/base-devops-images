@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  python:
+    build:
+      context: ./python-layer
+      dockerfile: Dockerfile
+    container_name: python-container
+
+  java:
+    build:
+      context: ./java-layer
+      dockerfile: Dockerfile
+    container_name: java-container
+
+  nodejs:
+    build:
+      context: ./nodejs-layer
+      dockerfile: Dockerfile
+    container_name: nodejs-container
