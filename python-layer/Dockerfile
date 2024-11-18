@@ -1,6 +1,6 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
-
+USER root
 # Add Python installation
 ARG PYTHON_VERSION=3.11
 RUN apt-get update && apt-get install -y --no-install-recommends \
