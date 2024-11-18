@@ -4,6 +4,7 @@ FROM ${BASE_IMAGE}
 USER root
 
 # Add Python installation
+ARG PYTHON_VERSION
 
 
 RUN echo "Using Python version: ${PYTHON_VERSION}" \
