@@ -42,8 +42,10 @@ RUN curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/relea
     && chmod +x /usr/local/bin/argocd
 
 # Install GitLab Runner CLI
-RUN curl -L "https://downloads.gitlab-runner.com/latest/binaries/gitlab-runner-linux-amd64" -o /usr/local/bin/gitlab-runner \
+RUN curl -L "https://gitlab-runner-downloads.s3.amazonaws.com/v16.5.0/binaries/gitlab-runner-linux-amd64" -o /usr/local/bin/gitlab-runner \
+    && echo "SHA256_CHECKSUM  /usr/local/bin/gitlab-runner" | sha256sum -c - \
     && chmod +x /usr/local/bin/gitlab-runner
+
 
 # Add a non-root user for security
 RUN useradd -ms /bin/bash devops
