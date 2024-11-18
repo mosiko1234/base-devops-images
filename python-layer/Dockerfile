@@ -4,9 +4,13 @@ FROM ${BASE_IMAGE}
 USER root
 
 # Add Python installation
-ARG PYTHON_VERSION
+
+
 RUN echo "Using Python version: ${PYTHON_VERSION}" \
     apt-get update && apt-get install -y --no-install-recommends \
+    software-properties-common \
+    && add-apt-repository 'deb http://deb.debian.org/debian bullseye-backports main' \
+    && apt-get update && apt-get install -y --no-install-recommends \
     python${PYTHON_VERSION} \
     python3-pip \
     python3-venv \
