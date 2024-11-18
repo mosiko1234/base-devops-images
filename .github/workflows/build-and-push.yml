@@ -32,9 +32,13 @@ jobs:
     - name: Build and Push Python Layer
       working-directory: ./python-layer
       run: |
-        docker build -t $DOCKERHUB_REPO/python-layer:latest .
-        docker push $DOCKERHUB_REPO/python-layer:latest
+        docker build \
+          --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
+          -t ${{ secrets.DOCKERHUB_REPO }}/python-layer:latest .
+        docker push ${{ secrets.DOCKERHUB_REPO }}/python-layer:latest
 
+
+        
 #    - name: Build and Push Java Layer
 #      working-directory: ./java-layer
 #      run: |
