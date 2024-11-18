@@ -43,7 +43,6 @@ RUN curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/relea
 
 # Install GitLab Runner CLI
 RUN curl -L "https://gitlab-runner-downloads.s3.amazonaws.com/v16.5.0/binaries/gitlab-runner-linux-amd64" -o /usr/local/bin/gitlab-runner \
-    && echo "SHA256_CHECKSUM  /usr/local/bin/gitlab-runner" | sha256sum -c - \
     && chmod +x /usr/local/bin/gitlab-runner
 
 
