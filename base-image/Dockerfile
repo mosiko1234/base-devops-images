@@ -17,9 +17,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     vim \
     ca-certificates \
     openssh-client \
+    software-properties-common \
+    apt-transport-https \
+    gnupg \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+
+    RUN apt-get update && apt-get install -y --no-install-recommends \
+    software-properties-common \
+    apt-transport-https \
+    gnupg \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 # Install AWS CLI
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
     && unzip awscliv2.zip \
