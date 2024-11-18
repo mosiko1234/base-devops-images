@@ -28,6 +28,7 @@ jobs:
         docker build -t $DOCKERHUB_REPO/base-image:latest .
         docker push $DOCKERHUB_REPO/base-image:latest
 
+        
     - name: Build and Push Python Layer
       working-directory: ./python-layer
       run: |
