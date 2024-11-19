@@ -25,6 +25,7 @@ jobs:
           --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
           --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/base-image:cache,mode=max \
           -t ${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
+          -t ${{ secrets.DOCKERHUB_REPO }}/base-image:v1.0-$(date +%Y%m%d)-${{ github.sha }} \
           -t ${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
           --push .
 
@@ -54,6 +55,7 @@ jobs:
           --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
           --build-arg PYTHON_VERSION=${{ matrix.python_version }} \
           -t ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest \
+          -t ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:v${{ matrix.python_version }}-$(date +%Y%m%d)-${{ github.sha }} \
           -t ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:cache \
           --push .
 
@@ -83,5 +85,6 @@ jobs:
           --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
           --build-arg JAVA_VERSION=${{ matrix.java_version }} \
           -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest \
+          -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:v${{ matrix.java_version }}-$(date +%Y%m%d)-${{ github.sha }} \
           -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:cache \
           --push .
