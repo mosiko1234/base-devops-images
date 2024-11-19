@@ -19,15 +19,7 @@ RUN echo "Using Python version: ${PYTHON_VERSION}" && \
     bash && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# עדכון pip
-RUN python${PYTHON_VERSION} -m ensurepip && \
-    python${PYTHON_VERSION} -m pip install --upgrade pip && \
-    python${PYTHON_VERSION} -m pip install \
-        virtualenv \
-        pytest \
-        pylint \
-        black \
-        flake8
+
 
 # וידוא ש-Python פועל
 RUN python${PYTHON_VERSION} --version
