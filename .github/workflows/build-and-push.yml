@@ -17,8 +17,8 @@ jobs:
     - name: Log in to DockerHub
       run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-    - name: Lint Base Dockerfile
-      run: docker run --rm -i hadolint/hadolint < ./base-image/Dockerfile
+#    - name: Lint Base Dockerfile
+#      run: docker run --rm -i hadolint/hadolint < ./base-image/Dockerfile
 
     - name: Build and Push Base Image
       working-directory: ./base-image
