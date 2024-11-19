@@ -59,6 +59,14 @@ jobs:
           -t ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:cache \
           --push .
 
+    - name: Test Python Image
+      working-directory: ./python-layer
+      run: |
+        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest \
+        python3 --version
+        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest \
+        pip --version
+
   # Job 3: Build Java Images
   build-java-images:
     name: Build and Push Java Images
