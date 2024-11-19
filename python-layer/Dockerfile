@@ -30,9 +30,6 @@ RUN update-alternatives --remove python3 /usr/bin/python3 || true && \
         ln -sf /usr/bin/pip3 /usr/local/bin/pip3; \
     fi
 
-# Upgrade pip to the latest version and install setuptools and wheel
-RUN python3 -m pip install --upgrade pip setuptools wheel
-
 # Verify installation
 RUN python3 --version && pip3 --version
 
