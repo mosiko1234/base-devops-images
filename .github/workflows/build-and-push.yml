@@ -6,20 +6,10 @@ on:
       - main
 
 jobs:
-  build-and-push:
-    name: Build and Push Docker Images to DockerHub
+  # Job 1: Build Base Image
+  build-base-image:
+    name: Build and Push Base Image
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python_version: [3.11, 3.12]
-        java_version: [11, 17]
-#        node_version: [14, 16, 18]
-
-    env:
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
-      DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
-
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
@@ -30,56 +20,68 @@ jobs:
     - name: Build and Push Base Image
       working-directory: ./base-image
       run: |
-        docker build -t $DOCKERHUB_REPO/base-image:latest .
-        docker push $DOCKERHUB_REPO/base-image:latest
+        docker buildx create --use
+        docker buildx build \
+          --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
+          --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/base-image:cache,mode=max \
+          -t ${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
+          -t ${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
+          --push .
 
-    - name: Build Python Images
+  # Job 2: Build Python Images
+  build-python-images:
+    name: Build and Push Python Images
+    needs: build-base-image
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python_version: [3.11, 3.12]
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Log in to DockerHub
+      run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+    - name: Build and Push Python Image
       working-directory: ./python-layer
       run: |
-        docker build \
+        docker buildx create --use
+        docker buildx build \
+          --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:cache \
+          --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:cache,mode=max \
           --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
           --build-arg PYTHON_VERSION=${{ matrix.python_version }} \
-          -t ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest .
+          -t ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest \
+          -t ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:cache \
+          --push .
 
-    - name: Push Python Images
-      working-directory: ./python-layer
-      run: |
-        docker push ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest
+  # Job 3: Build Java Images
+  build-java-images:
+    name: Build and Push Java Images
+    needs: build-base-image
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java_version: [11, 17]
 
-    - name: Test Docker Images
-      working-directory: ./python-layer
-      run: |
-        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest \
-        /bin/bash -c "python${{ matrix.python_version }} --version && pip --version"
-  
-    - name: Build Java Images
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Log in to DockerHub
+      run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+    - name: Build and Push Java Image
       working-directory: ./java-layer
       run: |
-        docker build \
+        docker buildx create --use
+        docker buildx build \
+          --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:cache \
+          --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:cache,mode=max \
           --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
           --build-arg JAVA_VERSION=${{ matrix.java_version }} \
-          -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest .
-
-    - name: Push Java Images
-      working-directory: ./java-layer
-      run: |
-        docker push ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest
-
-    - name: Test Java Images
-      working-directory: ./java-layer
-      run: |
-        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest \
-        java -version
-  
-#    - name: Build Node.js Images
-#      working-directory: ./node-layer
-#      run: |
-#        docker build \
-#          --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
-#          --build-arg NODE_VERSION=${{ matrix.node_version }} \
-#          -t ${{ secrets.DOCKERHUB_REPO }}/node-${{ matrix.node_version }}:latest .
-#
-#    - name: Push Node.js Images
-#      working-directory: ./node-layer
-#      run: |
-#        docker push ${{ secrets.DOCKERHUB_REPO }}/node-${{ matrix.node_version }}:latest
+          -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest \
+          -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:cache \
+          --push .
