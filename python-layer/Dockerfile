@@ -6,15 +6,19 @@ FROM ${BASE_IMAGE}
 ENV DEBIAN_FRONTEND=noninteractive
 ARG PYTHON_VERSION
 
-# Install Python and pip
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends software-properties-common && \
+    apt-get install -y --no-install-recommends \
+    software-properties-common && \
     add-apt-repository -y ppa:deadsnakes/ppa && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
     python${PYTHON_VERSION} \
     python${PYTHON_VERSION}-venv \
-    python${PYTHON_VERSION}-distutils
+    python${PYTHON_VERSION}-distutils \
+    python3-pip && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 
 
 # Set default python and pip versions
