@@ -1,5 +1,5 @@
 
-# Docker Multi-Language Images Pipeline
+# Docker Multi-Language Images Pipeline base-devops-images
 
 This repository contains a robust pipeline for building, testing, and pushing Docker images tailored for different programming environments. The project is designed to streamline the process of maintaining base images and language-specific images for Python and Java while ensuring high-quality builds and optimal performance.
 
@@ -87,8 +87,8 @@ This repository contains a robust pipeline for building, testing, and pushing Do
 
 1. **Clone the Repository:**
    ```bash
-   git clone https://github.com/yourusername/docker-multi-language-pipeline.git
-   cd docker-multi-language-pipeline
+   git clone https://github.com/mosiko1234/base-devops-images.git
+   cd base-devops-images
    ```
 
 2. **Configure GitHub Actions:**
@@ -109,8 +109,8 @@ This repository contains a robust pipeline for building, testing, and pushing Do
 
 ### Test a Built Image Locally
 ```bash
-docker pull yourdockerhub/base-image:latest
-docker run --rm -it yourdockerhub/base-image:latest bash
+docker pull adafef2e596e/base-image:latest
+docker run --rm -it adafef2e596e/base-image:latest bash
 ```
 
 ### Add a New Language Version
