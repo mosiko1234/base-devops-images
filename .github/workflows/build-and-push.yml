@@ -17,9 +17,6 @@ jobs:
     - name: Log in to DockerHub
       run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-#    - name: Lint Base Dockerfile
-#      run: docker run --rm -i hadolint/hadolint < ./base-image/Dockerfile
-
     - name: Build and Push Base Image
       working-directory: ./base-image
       run: |
@@ -41,16 +38,12 @@ jobs:
     strategy:
       matrix:
         python_version: [3.11, 3.12]
-
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
 
     - name: Log in to DockerHub
       run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-
- #   - name: Lint Python Dockerfile
- #     run: docker run --rm -i hadolint/hadolint < ./python-layer/Dockerfile
 
     - name: Build and Push Python Image
       working-directory: ./python-layer
@@ -73,26 +66,6 @@ jobs:
         docker run --rm ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest \
         python${{ matrix.python_version }} --version && pip --version
 
-    - name: Notify Slack
-      if: always() # Ensures the Slack notification always runs
-      run: |
-        curl -X POST -H 'Content-type: application/json' \
-        --data '{
-          "text": "Python build completed for version: ${{ matrix.python_version }}",
-          "attachments": [
-            {
-              "title": "Build status",
-              "text": "Build for Python ${{ matrix.python_version }} has **${{ job.status }}** status.",
-              "color": "${{ job.status == 'success' && '#36a64f' || '#ff0000' }}"
-            },
-            {
-              "title": "Workflow Details",
-              "text": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View details>"
-            }
-          ]
-        }' \
-        ${{ secrets.SLACK_WEBHOOK_URL }}
-
   # Job 3: Build Java Images
   build-java-images:
     name: Build and Push Java Images
@@ -101,16 +74,12 @@ jobs:
     strategy:
       matrix:
         java_version: [11, 17]
-
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
 
     - name: Log in to DockerHub
       run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-
-#    - name: Lint Java Dockerfile
-#      run: docker run --rm -i hadolint/hadolint < ./java-layer/Dockerfile
 
     - name: Build and Push Java Image
       working-directory: ./java-layer
@@ -127,50 +96,37 @@ jobs:
           -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:cache \
           --push .
 
+  # Job 4: Slack Notification
+  notify-slack:
+    name: Notify Slack
+    needs: [build-python-images, build-java-images]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Generate Build Summary
+      run: |
+        echo "Python Builds:" > build-summary.txt
+        echo "Python 3.11: ${{ needs.build-python-images.outputs.python-3.11-status }}" >> build-summary.txt
+        echo "Python 3.12: ${{ needs.build-python-images.outputs.python-3.12-status }}" >> build-summary.txt
+        echo "Java Builds:" >> build-summary.txt
+        echo "Java 11: ${{ needs.build-java-images.outputs.java-11-status }}" >> build-summary.txt
+        echo "Java 17: ${{ needs.build-java-images.outputs.java-17-status }}" >> build-summary.txt
 
-
-    - name: Notify Slack
-      if: always() # Ensures the Slack notification always runs
+    - name: Send Slack Notification
       run: |
         curl -X POST -H 'Content-type: application/json' \
         --data '{
-          "text": "Java build completed for version: ${{ matrix.java_version }}",
+          "text": "Build Summary",
           "attachments": [
             {
-              "title": "Build status",
-              "text": "Build for Java ${{ matrix.java_version }} has **${{ job.status }}** status.",
-              "color": "${{ job.status == 'success' && '#36a64f' || '#ff0000' }}"
+              "title": "Python Builds",
+              "text": "- Python 3.11: ${{ needs.build-python-images.outputs.python-3.11-status }}\n- Python 3.12: ${{ needs.build-python-images.outputs.python-3.12-status }}",
+              "color": "#36a64f"
             },
             {
-              "title": "Workflow Details",
-              "text": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View details>"
+              "title": "Java Builds",
+              "text": "- Java 11: ${{ needs.build-java-images.outputs.java-11-status }}\n- Java 17: ${{ needs.build-java-images.outputs.java-17-status }}",
+              "color": "#36a64f"
             }
           ]
         }' \
         ${{ secrets.SLACK_WEBHOOK_URL }}
-#    - name: Test Java Image
-#      working-directory: ./java-layer
-#      run: |
-#        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest \
-#        java -version
-
-  # Job 4: Generate Build Report
-  generate-report:
-    name: Generate and Upload Build Report
-    needs: [build-python-images, build-java-images]
-    runs-on: ubuntu-latest
-    steps:
-    - name: Generate Report
-      run: |
-        echo "### Build Report" > build-report.md
-        echo "- Base Image: ✅" >> build-report.md
-        echo "- Python 3.11: ✅" >> build-report.md
-        echo "- Python 3.12: ✅" >> build-report.md
-        echo "- Java 11: ✅" >> build-report.md
-        echo "- Java 17: ✅" >> build-report.md
-
-    - name: Upload Build Report
-      uses: actions/upload-artifact@v3
-      with:
-        name: build-report
-        path: build-report.md
