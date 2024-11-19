@@ -96,3 +96,9 @@ jobs:
           -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:v${{ matrix.java_version }}-$(date +%Y%m%d)-${{ github.sha }} \
           -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:cache \
           --push .
+
+    - name: Test Java Image
+      working-directory: ./java-layer
+      run: |
+        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest \
+        java -version
