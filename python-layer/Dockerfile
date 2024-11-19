@@ -8,17 +8,17 @@ ARG PYTHON_VERSION
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    python3.11 python3.11-venv python3.11-distutils && \
+    python${PYTHON_VERSION} python${PYTHON_VERSION}-venv python${PYTHON_VERSION}-distutils && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# הגדרת ברירת מחדל של python3
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && \
-    update-alternatives --set python3 /usr/bin/python3.11
-
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 && \
+    update-alternatives --set python3 /usr/bin/python${PYTHON_VERSION}
 
 # Verify installation
 RUN python3 --version && pip3 --version || exit 1
 
-CMD ["python3"]
+# Print Python version for debugging
+RUN python3 -c "import sys; print(sys.version)"
 
+CMD ["python3"]
