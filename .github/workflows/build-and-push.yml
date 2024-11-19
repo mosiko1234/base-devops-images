@@ -47,7 +47,9 @@ jobs:
     - name: Test Docker Images
       working-directory: ./python-layer
       run: |
-        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest
+        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest \
+        /bin/bash -c "python${{ matrix.python_version }} --version && pip --version"
+  
                
     - name: Build and Push Final Python Layer
       working-directory: ./python-layer
