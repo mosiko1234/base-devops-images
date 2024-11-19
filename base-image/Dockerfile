@@ -1,5 +1,5 @@
 # Start with a lightweight Linux base image
-FROM debian:bookworm-slim
+FROM ubuntu:20.04
 
 # Set environment variables
 ENV PATH="/root/.local/bin:$PATH"
