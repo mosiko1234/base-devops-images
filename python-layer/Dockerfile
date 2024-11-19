@@ -27,9 +27,10 @@ RUN wget https://bootstrap.pypa.io/get-pip.py && \
 # Set default Python version dynamically
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 && \
     update-alternatives --set python3 /usr/bin/python${PYTHON_VERSION}
-
+RUN ldd /usr/bin/python3
 # Verify installation
 RUN python3 --version && pip3 --version
+
 
 # Default command
 CMD ["python3"]
