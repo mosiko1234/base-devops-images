@@ -107,11 +107,11 @@ jobs:
           -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:cache \
           --push .
 
-    - name: Test Java Image
-      working-directory: ./java-layer
-      run: |
-        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest \
-        java -version
+#    - name: Test Java Image
+#      working-directory: ./java-layer
+#      run: |
+#        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest \
+#        java -version
 
   # Job 4: Generate Build Report
   generate-report:

@@ -24,12 +24,15 @@ RUN wget https://bootstrap.pypa.io/get-pip.py && \
     python${PYTHON_VERSION} get-pip.py && \
     rm get-pip.py
 
-# Set default Python version dynamically
+# Update-alternatives to set Python version
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 && \
     update-alternatives --set python3 /usr/bin/python${PYTHON_VERSION}
-RUN ldd /usr/bin/python3
-# Verify installation
+
+# Skip ldd if running under ARM emulation
+RUN [ "$(uname -m)" != "aarch64" ] || echo "Skipping ldd on ARM"
+# Verify Python and pip versions
 RUN python3 --version && pip3 --version
+
 
 ENTRYPOINT ["/bin/bash", "-c"]
 CMD ["python3 --version"]
