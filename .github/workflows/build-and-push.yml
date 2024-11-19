@@ -17,11 +17,15 @@ jobs:
     - name: Log in to DockerHub
       run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
+    - name: Lint Base Dockerfile
+      run: docker run --rm -i hadolint/hadolint < ./base-image/Dockerfile
+
     - name: Build and Push Base Image
       working-directory: ./base-image
       run: |
         docker buildx create --use
         docker buildx build \
+          --platform linux/amd64,linux/arm64 \
           --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
           --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/base-image:cache,mode=max \
           -t ${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
@@ -45,11 +49,15 @@ jobs:
     - name: Log in to DockerHub
       run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
+    - name: Lint Python Dockerfile
+      run: docker run --rm -i hadolint/hadolint < ./python-layer/Dockerfile
+
     - name: Build and Push Python Image
       working-directory: ./python-layer
       run: |
         docker buildx create --use
         docker buildx build \
+          --platform linux/amd64,linux/arm64 \
           --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:cache \
           --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:cache,mode=max \
           --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
@@ -63,9 +71,7 @@ jobs:
       working-directory: ./python-layer
       run: |
         docker run --rm ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest \
-        python3 --version
-        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest \
-        pip --version
+        python${{ matrix.python_version }} --version && pip --version
 
   # Job 3: Build Java Images
   build-java-images:
@@ -83,11 +89,15 @@ jobs:
     - name: Log in to DockerHub
       run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
+    - name: Lint Java Dockerfile
+      run: docker run --rm -i hadolint/hadolint < ./java-layer/Dockerfile
+
     - name: Build and Push Java Image
       working-directory: ./java-layer
       run: |
         docker buildx create --use
         docker buildx build \
+          --platform linux/amd64,linux/arm64 \
           --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:cache \
           --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:cache,mode=max \
           --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
@@ -102,3 +112,24 @@ jobs:
       run: |
         docker run --rm ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest \
         java -version
+
+  # Job 4: Generate Build Report
+  generate-report:
+    name: Generate and Upload Build Report
+    needs: [build-python-images, build-java-images]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Generate Report
+      run: |
+        echo "### Build Report" > build-report.md
+        echo "- Base Image: ✅" >> build-report.md
+        echo "- Python 3.11: ✅" >> build-report.md
+        echo "- Python 3.12: ✅" >> build-report.md
+        echo "- Java 11: ✅" >> build-report.md
+        echo "- Java 17: ✅" >> build-report.md
+
+    - name: Upload Build Report
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-report
+        path: build-report.md
