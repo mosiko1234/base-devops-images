@@ -15,12 +15,14 @@ RUN apt-get update && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
         python${PYTHON_VERSION} python${PYTHON_VERSION}-dev python${PYTHON_VERSION}-distutils \
-        python3-pip && \
+        wget && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Update pip dynamically
-RUN python${PYTHON_VERSION} -m pip install --upgrade pip
+# Install pip using get-pip.py
+RUN wget https://bootstrap.pypa.io/get-pip.py && \
+    python${PYTHON_VERSION} get-pip.py && \
+    rm get-pip.py
 
 # Set default Python version dynamically
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 && \
