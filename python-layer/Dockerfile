@@ -23,12 +23,14 @@ RUN echo "Using Python version: ${PYTHON_VERSION}" && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Remove existing alternatives (if necessary) and set Python version as default
+# Set Python version as default and configure pip3
 RUN update-alternatives --remove python3 /usr/bin/python3 || true && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 && \
-    ln -sf /usr/bin/pip3 /usr/bin/python${PYTHON_VERSION}-pip || true && \
+    update-alternatives --set python3 /usr/bin/python${PYTHON_VERSION} && \
     update-alternatives --remove pip3 /usr/bin/pip3 || true && \
-    update-alternatives --install /usr/bin/pip3 pip3 /usr/bin/pip3 1
+    ln -sf /usr/bin/pip3 /usr/local/bin/python${PYTHON_VERSION}-pip && \
+    update-alternatives --install /usr/bin/pip3 pip3 /usr/bin/pip3 1 && \
+    update-alternatives --set pip3 /usr/bin/pip3
 
 # Verify installation
 RUN python3 --version && pip3 --version
