@@ -30,6 +30,11 @@ jobs:
           -t ${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
           --push .
 
+    - name: Scan for Vulnerabilities
+      run: |
+        docker pull ${{ secrets.DOCKERHUB_REPO }}/base-image:latest
+        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --severity HIGH,CRITICAL ${{ secrets.DOCKERHUB_REPO }}/base-image:latest
+
   # Job 2: Build Python Images
   build-python-images:
     name: Build and Push Python Images
