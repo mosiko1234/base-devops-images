@@ -34,3 +34,4 @@ RUN python3 --version && pip3 --version
 
 # Default command
 CMD ["bash"]
+ENTRYPOINT ["/bin/bash"]
