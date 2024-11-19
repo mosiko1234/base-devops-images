@@ -12,6 +12,7 @@ jobs:
     strategy:
       matrix:
         python_version: [3.11, 3.12]
+        java_version: [11, 17]
 
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -50,3 +51,15 @@ jobs:
         docker run --rm ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest \
         /bin/bash -c "python${{ matrix.python_version }} --version && pip --version"
   
+    - name: Build Java Images
+      working-directory: ./java-layer
+      run: |
+        docker build \
+          --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
+          --build-arg JAVA_VERSION=${{ matrix.java_version }} \
+          -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest .
+
+    - name: Push Java Images
+      working-directory: ./java-layer
+      run: |
+        docker push ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest
