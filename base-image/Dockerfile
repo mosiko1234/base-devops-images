@@ -3,6 +3,8 @@ FROM ubuntu:20.04
 
 # Set environment variables
 ENV PATH="/root/.local/bin:$PATH"
+# Set environment variables to avoid interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
 
 USER root
 # Update system packages and install essential tools
