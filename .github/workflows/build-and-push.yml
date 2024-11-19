@@ -37,7 +37,7 @@ jobs:
 
   # Job 2: Build Python Images
   build-python-images:
-    name: Build and Push Python Images
+    name: Build Python Images
     needs: build-base-image
     runs-on: ubuntu-latest
     strategy:
@@ -51,7 +51,7 @@ jobs:
     - name: Log in to DockerHub
       run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-    - name: Build and Push Python Image
+    - name: Build Python Image
       working-directory: ./python-layer
       run: |
         docker buildx create --use
@@ -66,6 +66,15 @@ jobs:
           -t ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:cache \
           --push .
 
+  test-python-images:
+    name: Test Python Images
+    needs: build-python-images
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python_version: [3.11, 3.12]
+
+    steps:
     - name: Test Python Image
       working-directory: ./python-layer
       run: |
@@ -74,7 +83,7 @@ jobs:
 
   # Job 3: Build Java Images
   build-java-images:
-    name: Build and Push Java Images
+    name: Build Java Images
     needs: build-base-image
     runs-on: ubuntu-latest
     strategy:
@@ -88,7 +97,7 @@ jobs:
     - name: Log in to DockerHub
       run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-    - name: Build and Push Java Image
+    - name: Build Java Image
       working-directory: ./java-layer
       run: |
         docker buildx create --use
@@ -103,10 +112,49 @@ jobs:
           -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:cache \
           --push .
 
-  # Job 4: Generate Build Report and Notify Slack
+  test-java-images:
+    name: Test Java Images
+    needs: build-java-images
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java_version: [11, 17]
+
+    steps:
+    - name: Test Java Image
+      working-directory: ./java-layer
+      run: |
+        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest java -version
+
+  # Job 4: Run E2E Tests
+  run-e2e-tests:
+    name: Run E2E Tests
+    needs: [test-python-images, test-java-images]
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Docker Compose for E2E
+      run: |
+        docker-compose -f ./tests/docker-compose.yml up -d
+        sleep 10
+
+    - name: Run E2E Tests
+      working-directory: ./tests
+      run: |
+        docker-compose up --build --abort-on-container-exit
+      env:
+        DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
+        PYTHON_VERSION: ${{ matrix.python_version }}
+      
+      
+
+  # Job 5: Generate Build Report and Notify Slack
   generate-report:
     name: Generate and Notify Build Report
-    needs: [build-python-images, build-java-images]
+    needs: [run-e2e-tests]
     runs-on: ubuntu-latest
     steps:
     - name: Generate Build Report
@@ -114,11 +162,12 @@ jobs:
         echo "### Build Report" > build-report.md
         echo "- Base Image: ✅" >> build-report.md
         echo "- Python Images:" >> build-report.md
-        echo "  - Python 3.11: ${{ needs.build-python-images.result }}" >> build-report.md
-        echo "  - Python 3.12: ${{ needs.build-python-images.result }}" >> build-report.md
+        echo "  - Python 3.11: ✅" >> build-report.md
+        echo "  - Python 3.12: ✅" >> build-report.md
         echo "- Java Images:" >> build-report.md
-        echo "  - Java 11: ${{ needs.build-java-images.result }}" >> build-report.md
-        echo "  - Java 17: ${{ needs.build-java-images.result }}" >> build-report.md
+        echo "  - Java 11: ✅" >> build-report.md
+        echo "  - Java 17: ✅" >> build-report.md
+        echo "- E2E Tests: ✅" >> build-report.md
 
     - name: Upload Build Report
       uses: actions/upload-artifact@v3
