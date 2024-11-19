@@ -26,8 +26,9 @@ RUN echo "Using Python version: ${PYTHON_VERSION}" && \
 # Remove existing alternatives (if necessary) and set Python version as default
 RUN update-alternatives --remove python3 /usr/bin/python3 || true && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 && \
+    ln -sf /usr/bin/pip3 /usr/bin/python${PYTHON_VERSION}-pip || true && \
     update-alternatives --remove pip3 /usr/bin/pip3 || true && \
-    update-alternatives --install /usr/bin/pip3 pip3 /usr/bin/python${PYTHON_VERSION}-pip 1
+    update-alternatives --install /usr/bin/pip3 pip3 /usr/bin/pip3 1
 
 # Verify installation
 RUN python3 --version && pip3 --version
