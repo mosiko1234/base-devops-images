@@ -65,6 +65,12 @@ jobs:
       run: |
         docker push ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest
 
+    - name: Test Java Images
+      working-directory: ./java-layer
+      run: |
+        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest \
+        java -version
+  
 #    - name: Build Node.js Images
 #      working-directory: ./node-layer
 #      run: |
