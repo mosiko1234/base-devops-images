@@ -50,12 +50,3 @@ jobs:
         docker run --rm ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest \
         /bin/bash -c "python${{ matrix.python_version }} --version && pip --version"
   
-               
-    - name: Build and Push Final Python Layer
-      working-directory: ./python-layer
-      run: |
-        docker build \
-          --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest \
-          -t ${{ secrets.DOCKERHUB_REPO }}/python-layer-${{ matrix.python_version }}:latest .
-        docker push ${{ secrets.DOCKERHUB_REPO }}/python-layer-${{ matrix.python_version }}:latest
-      
