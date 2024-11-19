@@ -11,16 +11,15 @@ RUN apt-get update && \
     add-apt-repository ppa:deadsnakes/ppa && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-        python${PYTHON_VERSION} python${PYTHON_VERSION}-dev && \
+        python${PYTHON_VERSION} python${PYTHON_VERSION}-dev \
+        python3-pip && \  # Install pip3
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# הגדרת ברירת מחדל של python3
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 && \
     update-alternatives --set python3 /usr/bin/python${PYTHON_VERSION}
 
 
-# Verify installation
 RUN python3 --version && pip3 --version || exit 1
 
 CMD ["python3"]
