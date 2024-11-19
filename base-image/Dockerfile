@@ -10,18 +10,18 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Update system packages and install essential tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential=12.4 \
-    curl=7.68 \
-    jq=1.5-1 \
-    bash=5.0 \
-    unzip=6.0-25 \
-    wget=1.20 \
-    vim=2:8.1 \
-    ca-certificates=20211016 \
-    openssh-client=1:8.2 \
-    software-properties-common=0.99.9 \
-    apt-transport-https=2.0 \
-    gnupg=2.2 \
+    build-essential \
+    curl \
+    jq \
+    bash \
+    unzip \
+    wget \
+    vim \
+    ca-certificates \
+    openssh-client \
+    software-properties-common \
+    apt-transport-https \
+    gnupg \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install AWS CLI
