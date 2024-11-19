@@ -33,4 +33,4 @@ RUN python3 --version && pip3 --version
 
 
 # Default command
-CMD ["python3"]
+CMD ["bash"]
