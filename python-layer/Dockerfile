@@ -27,10 +27,10 @@ RUN echo "Using Python version: ${PYTHON_VERSION}" && \
 RUN update-alternatives --remove python3 /usr/bin/python3 || true && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 && \
     update-alternatives --set python3 /usr/bin/python${PYTHON_VERSION} && \
-    update-alternatives --remove pip3 /usr/bin/pip3 || true && \
     ln -sf /usr/bin/pip3 /usr/local/bin/python${PYTHON_VERSION}-pip && \
-    update-alternatives --install /usr/bin/pip3 pip3 /usr/bin/pip3 1 && \
-    update-alternatives --set pip3 /usr/bin/pip3
+    if [ ! -e /usr/bin/pip3 ]; then \
+        ln -sf /usr/bin/pip3 /usr/local/bin/pip3; \
+    fi
 
 # Verify installation
 RUN python3 --version && pip3 --version
