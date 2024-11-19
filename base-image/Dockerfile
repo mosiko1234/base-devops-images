@@ -58,11 +58,6 @@ RUN curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/relea
 RUN curl -L "https://gitlab-runner-downloads.s3.amazonaws.com/v16.5.0/binaries/gitlab-runner-linux-amd64" -o /usr/local/bin/gitlab-runner \
     && chmod +x /usr/local/bin/gitlab-runner
 
-
-# Add a non-root user for security
-#RUN useradd -ms /bin/bash devops
-#USER devops
-
 # Set working directory
 WORKDIR /workspace
 
