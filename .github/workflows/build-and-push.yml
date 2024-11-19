@@ -38,6 +38,7 @@ jobs:
     strategy:
       matrix:
         python_version: [3.11, 3.12]
+
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
@@ -74,6 +75,7 @@ jobs:
     strategy:
       matrix:
         java_version: [11, 17]
+
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
@@ -96,37 +98,44 @@ jobs:
           -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:cache \
           --push .
 
-  # Job 4: Slack Notification
-  notify-slack:
-    name: Notify Slack
+  # Job 4: Generate Build Report and Notify Slack
+  generate-report:
+    name: Generate and Notify Build Report
     needs: [build-python-images, build-java-images]
     runs-on: ubuntu-latest
     steps:
-    - name: Generate Build Summary
+    - name: Generate Build Report
       run: |
-        echo "Python Builds:" > build-summary.txt
-        echo "Python 3.11: ${{ needs.build-python-images.outputs.python-3.11-status }}" >> build-summary.txt
-        echo "Python 3.12: ${{ needs.build-python-images.outputs.python-3.12-status }}" >> build-summary.txt
-        echo "Java Builds:" >> build-summary.txt
-        echo "Java 11: ${{ needs.build-java-images.outputs.java-11-status }}" >> build-summary.txt
-        echo "Java 17: ${{ needs.build-java-images.outputs.java-17-status }}" >> build-summary.txt
+        echo "### Build Report" > build-report.md
+        echo "- Base Image: ✅" >> build-report.md
+        echo "- Python Images:" >> build-report.md
+        echo "  - Python 3.11: ${{ needs.build-python-images.result }}" >> build-report.md
+        echo "  - Python 3.12: ${{ needs.build-python-images.result }}" >> build-report.md
+        echo "- Java Images:" >> build-report.md
+        echo "  - Java 11: ${{ needs.build-java-images.result }}" >> build-report.md
+        echo "  - Java 17: ${{ needs.build-java-images.result }}" >> build-report.md
 
-    - name: Send Slack Notification
+    - name: Upload Build Report
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-report
+        path: build-report.md
+
+    - name: Notify Slack with Summary
       run: |
+        REPORT=$(cat build-report.md | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
         curl -X POST -H 'Content-type: application/json' \
         --data '{
-          "text": "Build Summary",
+          "text": "Build Summary Report",
           "attachments": [
             {
-              "title": "Python Builds",
-              "text": "- Python 3.11: ${{ needs.build-python-images.outputs.python-3.11-status }}\n- Python 3.12: ${{ needs.build-python-images.outputs.python-3.12-status }}",
+              "title": "Build Status",
+              "text": "'"$REPORT"'",
               "color": "#36a64f"
             },
             {
-              "title": "Java Builds",
-              "text": "- Java 11: ${{ needs.build-java-images.outputs.java-11-status }}\n- Java 17: ${{ needs.build-java-images.outputs.java-17-status }}",
-              "color": "#36a64f"
+              "title": "View Details",
+              "text": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Click here>"
             }
           ]
-        }' \
-        ${{ secrets.SLACK_WEBHOOK_URL }}
+        }' ${{ secrets.SLACK_WEBHOOK_URL }}
