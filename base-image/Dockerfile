@@ -6,9 +6,7 @@ ENV PATH="/root/.local/bin:$PATH"
 ENV DEBIAN_FRONTEND=noninteractive
 # Define shell with pipefail
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-# Create a non-root user
-RUN useradd -m devops
-USER devops
+
 
 # Update system packages and install essential tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
