@@ -13,6 +13,7 @@ jobs:
       matrix:
         python_version: [3.11, 3.12]
         java_version: [11, 17]
+        node_version: [14, 16, 18]
 
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -63,3 +64,16 @@ jobs:
       working-directory: ./java-layer
       run: |
         docker push ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest
+
+    - name: Build Node.js Images
+      working-directory: ./node-layer
+      run: |
+        docker build \
+          --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
+          --build-arg NODE_VERSION=${{ matrix.node_version }} \
+          -t ${{ secrets.DOCKERHUB_REPO }}/node-${{ matrix.node_version }}:latest .
+
+    - name: Push Node.js Images
+      working-directory: ./node-layer
+      run: |
+        docker push ${{ secrets.DOCKERHUB_REPO }}/node-${{ matrix.node_version }}:latest
