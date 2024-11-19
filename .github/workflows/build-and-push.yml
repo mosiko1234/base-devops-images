@@ -74,12 +74,25 @@ jobs:
         python${{ matrix.python_version }} --version && pip --version
 
     - name: Notify Slack
-      if: always() # Always runs even if previous steps fail
+      if: always() # Ensures the Slack notification always runs
       run: |
         curl -X POST -H 'Content-type: application/json' \
-        --data '{"text":"GitHub Action completed! Build status: ${{ job.status }} for branch ${{ github.ref }}"}' \
+        --data '{
+          "text": "Python build completed for version: ${{ matrix.python_version }}",
+          "attachments": [
+            {
+              "title": "Build status",
+              "text": "Build for Python ${{ matrix.python_version }} has **${{ job.status }}** status.",
+              "color": "${{ job.status == 'success' && '#36a64f' || '#ff0000' }}"
+            },
+            {
+              "title": "Workflow Details",
+              "text": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View details>"
+            }
+          ]
+        }' \
         ${{ secrets.SLACK_WEBHOOK_URL }}
-        
+
   # Job 3: Build Java Images
   build-java-images:
     name: Build and Push Java Images
@@ -114,6 +127,27 @@ jobs:
           -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:cache \
           --push .
 
+
+
+    - name: Notify Slack
+      if: always() # Ensures the Slack notification always runs
+      run: |
+        curl -X POST -H 'Content-type: application/json' \
+        --data '{
+          "text": "Java build completed for version: ${{ matrix.java_version }}",
+          "attachments": [
+            {
+              "title": "Build status",
+              "text": "Build for Java ${{ matrix.java_version }} has **${{ job.status }}** status.",
+              "color": "${{ job.status == 'success' && '#36a64f' || '#ff0000' }}"
+            },
+            {
+              "title": "Workflow Details",
+              "text": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View details>"
+            }
+          ]
+        }' \
+        ${{ secrets.SLACK_WEBHOOK_URL }}
 #    - name: Test Java Image
 #      working-directory: ./java-layer
 #      run: |
