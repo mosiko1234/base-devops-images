@@ -1,22 +1,33 @@
+# Use your base image
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ARG PYTHON_VERSION=3.11
+
 USER root
 
-# התקנת Python וכלים נדרשים
-ARG PYTHON_VERSION
-
-
-
+# Add deadsnakes PPA and install Python
 RUN echo "Using Python version: ${PYTHON_VERSION}" && \
-        apt-get update && apt-get install -y --no-install-recommends \
-        python${PYTHON_VERSION} \
-        python3-pip \
-        python3-venv \
-        && apt-get clean \
-        && rm -rf /var/lib/apt/lists/*
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    software-properties-common && \
+    add-apt-repository -y ppa:deadsnakes/ppa && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    python${PYTHON_VERSION} \
+    python${PYTHON_VERSION}-venv \
+    python${PYTHON_VERSION}-distutils \
+    python3-pip && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-# וידוא ש-Python פועל
-RUN python${PYTHON_VERSION} --version
+# Set Python version as default
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 && \
+    update-alternatives --install /usr/bin/pip3 pip3 /usr/bin/pip3 1
+
+# Verify installation
+RUN python3 --version && pip3 --version
 
 CMD ["python3"]
