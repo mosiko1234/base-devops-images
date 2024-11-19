@@ -9,28 +9,25 @@ ENV DEBIAN_FRONTEND=noninteractive
 ARG PYTHON_VERSION
 
 # Install Python and dependencies dynamically
+# Install Python and dependencies dynamically
 RUN apt-get update && \
-    apt-get install -y software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa && \
+    apt-get install -y --no-install-recommends \
+        software-properties-common \
+        wget \
+        gpg && \
+    echo "deb http://ppa.launchpad.net/deadsnakes/ppa/ubuntu focal main" > /etc/apt/sources.list.d/deadsnakes-ppa.list && \
+    apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys BA6932366A755776 && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-        python${PYTHON_VERSION} python${PYTHON_VERSION}-dev python${PYTHON_VERSION}-distutils \
-        wget && \
+        python${PYTHON_VERSION} \
+        python${PYTHON_VERSION}-dev \
+        python${PYTHON_VERSION}-distutils && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install pip using get-pip.py
-RUN wget https://bootstrap.pypa.io/get-pip.py && \
-    python${PYTHON_VERSION} get-pip.py && \
-    rm get-pip.py
+# Upgrade pip
+RUN python${PYTHON_VERSION} -m ensurepip && \
+    python${PYTHON_VERSION} -m pip install --upgrade pip
 
-# Set default Python version dynamically
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 && \
-    update-alternatives --set python3 /usr/bin/python${PYTHON_VERSION}
-RUN ldd /usr/bin/python3
-# Verify installation
-RUN python3 --version && pip3 --version
-
-
-# Set /bin/bash as the entrypoint
+# Set entrypoint
 ENTRYPOINT ["/bin/bash"]
