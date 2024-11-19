@@ -42,7 +42,7 @@ jobs:
     - name: Test Docker Images
       working-directory: ./python-layer
       run: |
-        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest ב
+        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest
 
     - name: Push Python Images
       working-directory: ./python-layer
