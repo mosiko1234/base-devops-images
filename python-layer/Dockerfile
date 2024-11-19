@@ -10,7 +10,7 @@ ARG PYTHON_VERSION
 
 # Install Python and dependencies dynamically
 RUN apt-get update && \
-    apt-get install -y software-properties-common && \
+    apt-get install -y software-properties-common python3-apt && \
     add-apt-repository ppa:deadsnakes/ppa && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
