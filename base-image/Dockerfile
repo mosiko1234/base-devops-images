@@ -4,7 +4,8 @@ FROM ubuntu:20.04
 # Set environment variables
 ENV PATH="/root/.local/bin:$PATH"
 ENV DEBIAN_FRONTEND=noninteractive
-
+# Define shell with pipefail
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Create a non-root user
 RUN useradd -m devops
 USER devops
