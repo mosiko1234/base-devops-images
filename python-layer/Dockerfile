@@ -32,6 +32,5 @@ RUN ldd /usr/bin/python3
 RUN python3 --version && pip3 --version
 
 
-# Default command
-CMD ["bash"]
+# Set /bin/bash as the entrypoint
 ENTRYPOINT ["/bin/bash"]
