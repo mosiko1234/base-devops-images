@@ -10,8 +10,8 @@ jobs:
     name: Build and Push Docker Images to DockerHub
     runs-on: ubuntu-latest
     strategy:
-        matrix:
-          python_version: [3.11]
+      matrix:
+        python_version: [3.11]
 
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -31,22 +31,23 @@ jobs:
         docker build -t $DOCKERHUB_REPO/base-image:latest .
         docker push $DOCKERHUB_REPO/base-image:latest
 
-        
-    - name: Build and Push Python Layer
+    - name: Build and Push Python Images
       working-directory: ./python-layer
       run: |
         docker build \
           --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
           --build-arg PYTHON_VERSION=${{ matrix.python_version }} \
-          -t ${{ secrets.DOCKERHUB_REPO }}/python:${{ matrix.python_version }} .
-        docker push ${{ secrets.DOCKERHUB_REPO }}/python:${{ matrix.python_version }}
+          -t ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest .
+        docker push ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest
 
-
-        run: |
+    - name: Build and Push Final Python Layer
+      working-directory: ./python-layer
+      run: |
         docker build \
           --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
           -t ${{ secrets.DOCKERHUB_REPO }}/python-layer:latest .
-        docker push ${{ secrets.DOCKERHUB_REPO }}/python-layer:latest        
+        docker push ${{ secrets.DOCKERHUB_REPO }}/python-layer:latest
+     
 
 #    - name: Build and Push Java Layer
 #      working-directory: ./java-layer
