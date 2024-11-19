@@ -28,7 +28,7 @@ jobs:
     - name: Build and Push Base Image
       working-directory: ./base-image
       run: |
-        docker build -t $DOCKERHUB_REPO/base-image:latest .
+        docker build --no-cache -t $DOCKERHUB_REPO/base-image:latest .
         docker push $DOCKERHUB_REPO/base-image:latest
 
     - name: Build and Push Python Images
