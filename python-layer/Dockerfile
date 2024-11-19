@@ -31,7 +31,9 @@ RUN ldd /usr/bin/python3
 # Verify installation
 RUN python3 --version && pip3 --version
 
+ENTRYPOINT ["/bin/bash", "-c"]
+CMD ["python3 --version"]
 
 # Default command
-CMD ["bash"]
-ENTRYPOINT ["/bin/bash"]
+#CMD ["bash"]
+#ENTRYPOINT ["/bin/bash"]
