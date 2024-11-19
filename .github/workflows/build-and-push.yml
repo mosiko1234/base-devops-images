@@ -73,6 +73,13 @@ jobs:
         docker run --rm ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest \
         python${{ matrix.python_version }} --version && pip --version
 
+    - name: Notify Slack
+      if: always() # Always runs even if previous steps fail
+      run: |
+        curl -X POST -H 'Content-type: application/json' \
+        --data '{"text":"GitHub Action completed! Build status: ${{ job.status }} for branch ${{ github.ref }}"}' \
+        ${{ secrets.SLACK_WEBHOOK_URL }}
+        
   # Job 3: Build Java Images
   build-java-images:
     name: Build and Push Java Images
