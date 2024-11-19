@@ -22,13 +22,13 @@ RUN echo "Using Python version: ${PYTHON_VERSION}" && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # עדכון pip והתקנת כלים נפוצים עבור Python
-RUN python${PYTHON_VERSION} -m pip install --upgrade pip && \
-    python${PYTHON_VERSION} -m pip install \
-        virtualenv \
-        pytest \
-        pylint \
-        black \
-        flake8
+#RUN python${PYTHON_VERSION} -m pip install --upgrade pip && \
+#    python${PYTHON_VERSION} -m pip install \
+#        virtualenv \
+#        pytest \
+#        pylint \
+#        black \
+#        flake8
 
 # הצבת פקודת ברירת מחדל
 CMD ["python3"]
