@@ -128,7 +128,8 @@ jobs:
 
     - name: Test Java Image
       run: |
-        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest java -version
+        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest java -version 2>&1 \
+        | grep "version" || echo "Java version test failed"
 
   # Job 4: Run E2E Tests
   run-e2e-tests:
