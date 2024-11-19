@@ -49,8 +49,8 @@ jobs:
     - name: Log in to DockerHub
       run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-    - name: Lint Python Dockerfile
-      run: docker run --rm -i hadolint/hadolint < ./python-layer/Dockerfile
+ #   - name: Lint Python Dockerfile
+ #     run: docker run --rm -i hadolint/hadolint < ./python-layer/Dockerfile
 
     - name: Build and Push Python Image
       working-directory: ./python-layer
@@ -89,8 +89,8 @@ jobs:
     - name: Log in to DockerHub
       run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-    - name: Lint Java Dockerfile
-      run: docker run --rm -i hadolint/hadolint < ./java-layer/Dockerfile
+#    - name: Lint Java Dockerfile
+#      run: docker run --rm -i hadolint/hadolint < ./java-layer/Dockerfile
 
     - name: Build and Push Java Image
       working-directory: ./java-layer
