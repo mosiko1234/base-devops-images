@@ -12,7 +12,7 @@ RUN apt-get update && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
         python${PYTHON_VERSION} python${PYTHON_VERSION}-dev \
-        python3-pip && \  # Install pip3
+        python3-pip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
