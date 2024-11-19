@@ -7,20 +7,15 @@ ENV DEBIAN_FRONTEND=noninteractive
 ARG PYTHON_VERSION
 
 # Install Python and pip
-RUN echo "Using Python version: ${PYTHON_VERSION}" && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-    python3-software-properties \
-    python3-apt \
-    python${PYTHON_VERSION} \
-    python${PYTHON_VERSION}-venv \
-    python${PYTHON_VERSION}-distutils && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends software-properties-common && \
     add-apt-repository -y ppa:deadsnakes/ppa && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-    python${PYTHON_VERSION}-distutils && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* || exit 1
+    python${PYTHON_VERSION} \
+    python${PYTHON_VERSION}-venv \
+    python${PYTHON_VERSION}-distutils
+
 
 # Set default python and pip versions
 RUN update-alternatives --remove python3 /usr/bin/python3 || true && \
