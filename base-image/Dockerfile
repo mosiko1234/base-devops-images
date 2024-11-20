@@ -10,24 +10,27 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Update system packages and install essential tools
 RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        software-properties-common \
     && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
-    && apt-get update && apt-get install -y --no-install-recommends\
-    build-essential \
-    libc6 \
-    libc6-dev \
-    libc-bin \
-    curl \
-    jq \
-    bash \
-    unzip \
-    wget \
-    vim \
-    ca-certificates \
-    openssh-client \
-    software-properties-common \
-    apt-transport-https \
-    gnupg \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        libc6 \
+        libc6-dev \
+        libc-bin \
+        curl \
+        jq \
+        bash \
+        unzip \
+        wget \
+        vim \
+        ca-certificates \
+        openssh-client \
+        apt-transport-https \
+        gnupg \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install AWS CLI
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
