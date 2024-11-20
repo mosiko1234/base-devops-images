@@ -7,9 +7,15 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Define shell with pipefail
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
+
 # Update system packages and install essential tools
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update \
+    && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
+    && apt-get update && apt-get install -y --no-install-recommends\
     build-essential \
+    libc6 \
+    libc6-dev \
+    libc-bin \
     curl \
     jq \
     bash \
@@ -22,17 +28,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-transport-https \
     gnupg \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Update glibc to the required version
-RUN wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz \
-    && tar -xvzf glibc-2.34.tar.gz && cd glibc-2.34 \
-    && mkdir build && cd build \
-    && ../configure --prefix=/usr && make -j$(nproc) && make install \
-    && ldconfig \
-    && cd / && rm -rf glibc-2.34 glibc-2.34.tar.gz
-
-# Verify glibc version
-RUN ldd --version
 
 # Install AWS CLI
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
