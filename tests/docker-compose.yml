@@ -1,16 +1,38 @@
 version: "3.9"
 
 services:
-  app:
+  python-tests:
     image: "${DOCKERHUB_REPO}/python-${PYTHON_VERSION}:latest"
     environment:
       - PYTHON_VERSION=${PYTHON_VERSION}
-    ports:
-      - "8000:8000"
+    entrypoint: >
+      /bin/bash -c "
+      set -e;
+      echo 'Testing Python Image';
+      python${PYTHON_VERSION} --version;
+      pip --version;
+      pip install requests;
+      aws --version;
+      echo 'foo: bar' | yq eval '.foo' -;
+      git --version;
+      git init /tmp/test-repo;
+      echo 'Python tests passed';
+      "
 
-  java:
+  java-tests:
     image: "${DOCKERHUB_REPO}/java-${JAVA_VERSION}:latest"
     environment:
       - JAVA_VERSION=${JAVA_VERSION}
-    ports:
-      - "9000:9000"
+    entrypoint: >
+      /bin/bash -c "
+      set -e;
+      echo 'Testing Java Image';
+      java -version;
+      echo 'public class Test { public static void main(String[] args) { System.out.println(\"Hello World\"); }}' > Test.java;
+      javac Test.java;
+      java Test;
+      helm version;
+      oc version || echo 'OpenShift CLI not configured';
+      argocd version || echo 'ArgoCD CLI not configured';
+      echo 'Java tests passed';
+      "
