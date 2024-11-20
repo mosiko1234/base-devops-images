@@ -134,7 +134,7 @@ jobs:
   # Job 4: Run E2E Tests
   run-e2e-tests:
     name: Run E2E Tests
-    needs: [build-python-images, build-java-images]
+    needs: [test-python-images, test-java-images]
     runs-on: ubuntu-latest
     strategy:
       matrix:
