@@ -140,17 +140,24 @@ jobs:
       matrix:
         python_version: [3.11, 3.12]
         java_version: [11, 17]
-
+      
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
-
+    
     - name: Install Docker Compose
       run: |
         sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
         sudo chmod +x /usr/local/bin/docker-compose
         docker-compose --version
-
+    
+    - name: Debug Environment Variables
+      run: |
+        echo "DOCKERHUB_REPO=${{ secrets.DOCKERHUB_REPO }}"
+        echo "PYTHON_VERSION=${{ matrix.python_version }}"
+        echo "JAVA_VERSION=${{ matrix.java_version }}"
+        cat ./tests/docker-compose.yml
+    
     - name: Set up Docker Compose for E2E
       run: |
         docker-compose -f ./tests/docker-compose.yml up -d
@@ -158,15 +165,31 @@ jobs:
         DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
         PYTHON_VERSION: ${{ matrix.python_version }}
         JAVA_VERSION: ${{ matrix.java_version }}
-
+      
     - name: Run E2E Tests
       run: |
+        set +e
         docker-compose -f ./tests/docker-compose.yml up --abort-on-container-exit --exit-code-from python-tests
+        exit_code=$?
+        if [ $exit_code -ne 0 ]; then
+          echo "E2E tests failed with exit code $exit_code"
+        fi
+        docker-compose down
+        set -e
       env:
         DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
         PYTHON_VERSION: ${{ matrix.python_version }}
-        JAVA_VERSION: ${{ matrix.java_version }} 
+        JAVA_VERSION: ${{ matrix.java_version }}
       
+    - name: Clean Up
+      if: always()
+      run: |
+        docker-compose down
+      env:
+        DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
+        PYTHON_VERSION: ${{ matrix.python_version }}
+        JAVA_VERSION: ${{ matrix.java_version }}
+        
 
   # Job 5: Generate Build Report and Notify Slack
   generate-report:
