@@ -10,8 +10,9 @@ env:
   JAVA_VERSIONS: "11,17"
 
 jobs:
+  # Job 1: Setup Variables
   setup-variables:
-    name: Setup Dynamic Variables
+    name: Setup Variables
     runs-on: ubuntu-latest
     outputs:
       python_versions: ${{ steps.set-vars.outputs.python_versions }}
@@ -20,8 +21,8 @@ jobs:
       - name: Set Dynamic Variables
         id: set-vars
         run: |
-          echo "PYTHON_VERSIONS=${{ env.PYTHON_VERSIONS }}" >> $GITHUB_ENV
-          echo "JAVA_VERSIONS=${{ env.JAVA_VERSIONS }}" >> $GITHUB_ENV
+          echo "::set-output name=python_versions::$(echo '["3.11", "3.12"]' | jq -c .)"
+          echo "::set-output name=java_versions::$(echo '["11", "17"]' | jq -c .)"
 
   # Job 1: Build Base Image
   build-base-image:
@@ -59,7 +60,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python_version: ${{ fromJson(env.PYTHON_VERSIONS) }}
+        python_version: ${{ fromJson(needs.setup-variables.outputs.python_versions) }}
 
     steps:
     - name: Checkout Code
@@ -89,7 +90,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python_version: ${{ fromJson(env.PYTHON_VERSIONS) }}
+        python_version: ${{ fromJson(needs.setup-variables.outputs.python_versions) }}
 
     steps:
     - name: Log in to DockerHub
@@ -107,7 +108,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java_version: ${{ fromJson(env.JAVA_VERSIONS) }}
+        java_version: ${{ fromJson(needs.setup-variables.outputs.java_versions) }}
 
     steps:
     - name: Checkout Code
@@ -137,7 +138,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java_version: ${{ fromJson(env.JAVA_VERSIONS) }}
+        java_version: ${{ fromJson(needs.setup-variables.outputs.java_versions) }}
 
     steps:
     - name: Log in to DockerHub
