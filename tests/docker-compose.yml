@@ -32,7 +32,6 @@ services:
       javac Test.java;
       java Test;
       helm version;
-      oc version || echo 'OpenShift CLI not configured';
-      argocd version || echo 'ArgoCD CLI not configured';
+      argocd version || echo "ArgoCD CLI validation skipped as server address is not set.";
       echo 'Java tests passed';
       "
