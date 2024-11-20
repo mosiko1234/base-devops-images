@@ -160,13 +160,12 @@ jobs:
         JAVA_VERSION: ${{ matrix.java_version }}
 
     - name: Run E2E Tests
-      working-directory: ./tests
       run: |
         docker-compose -f ./tests/docker-compose.yml up --abort-on-container-exit --exit-code-from python-tests
       env:
         DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
         PYTHON_VERSION: ${{ matrix.python_version }}
-        JAVA_VERSION: ${{ matrix.java_version }}      
+        JAVA_VERSION: ${{ matrix.java_version }} 
       
 
   # Job 5: Generate Build Report and Notify Slack
