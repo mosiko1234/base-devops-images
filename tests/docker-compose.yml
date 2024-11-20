@@ -1,26 +1,16 @@
-version: '3.8'
+version: "3.9"
 
 services:
   app:
     image: "${DOCKERHUB_REPO}/python-${PYTHON_VERSION}:latest"
-    ports:
-      - "8080:8080"
-    depends_on:
-      - db
-    networks:
-      - test_network
-
-  db:
-    image: postgres:latest
     environment:
-      POSTGRES_USER: test_user
-      POSTGRES_PASSWORD: test_password
-      POSTGRES_DB: test_db
+      - PYTHON_VERSION=${PYTHON_VERSION}
     ports:
-      - "5432:5432"
-    networks:
-      - test_network
+      - "8000:8000"
 
-networks:
-  test_network:
-    driver: bridge
+  java:
+    image: "${DOCKERHUB_REPO}/java-${JAVA_VERSION}:latest"
+    environment:
+      - JAVA_VERSION=${JAVA_VERSION}
+    ports:
+      - "9000:9000"

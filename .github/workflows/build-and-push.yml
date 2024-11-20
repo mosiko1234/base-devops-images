@@ -4,8 +4,25 @@ on:
   push:
     branches:
       - main
+env:
+  DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
+  PYTHON_VERSIONS: "3.11,3.12"
+  JAVA_VERSIONS: "11,17"
 
 jobs:
+  setup-variables:
+    name: Setup Dynamic Variables
+    runs-on: ubuntu-latest
+    outputs:
+      python_versions: ${{ steps.set-vars.outputs.python_versions }}
+      java_versions: ${{ steps.set-vars.outputs.java_versions }}
+    steps:
+      - name: Set Dynamic Variables
+        id: set-vars
+        run: |
+          echo "PYTHON_VERSIONS=${{ env.PYTHON_VERSIONS }}" >> $GITHUB_ENV
+          echo "JAVA_VERSIONS=${{ env.JAVA_VERSIONS }}" >> $GITHUB_ENV
+
   # Job 1: Build Base Image
   build-base-image:
     name: Build and Push Base Image
@@ -42,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python_version: [3.11, 3.12]
+        python_version: ${{ fromJson(env.PYTHON_VERSIONS) }}
 
     steps:
     - name: Checkout Code
@@ -72,7 +89,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python_version: [3.11, 3.12]
+        python_version: ${{ fromJson(env.PYTHON_VERSIONS) }}
 
     steps:
     - name: Log in to DockerHub
@@ -90,7 +107,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java_version: [11, 17]
+        java_version: ${{ fromJson(env.JAVA_VERSIONS) }}
 
     steps:
     - name: Checkout Code
@@ -120,7 +137,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java_version: [11, 17]
+        java_version: ${{ fromJson(env.JAVA_VERSIONS) }}
 
     steps:
     - name: Log in to DockerHub
@@ -138,38 +155,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-    - name: Install Docker Compose
-      run: |
-        sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        sudo chmod +x /usr/local/bin/docker-compose
-        docker-compose --version
+      - name: Install Docker Compose
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
 
-    - name: Debug Environment Variables
-      run: |
-        echo "DOCKERHUB_REPO=${{ secrets.DOCKERHUB_REPO }}"
-        echo "PYTHON_VERSION=${{ matrix.python_version }}"
-        cat ./tests/docker-compose.yml
-
-    - name: Set up Docker Compose for E2E
-      run: |
-        docker-compose -f ./tests/docker-compose.yml up -d
-        sleep 10
-      env:
-        DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
-        PYTHON_VERSION: ${{ matrix.python_version }}
-  
-  
-
-    - name: Run E2E Tests
-      working-directory: ./tests
-      run: |
-        docker-compose up --build --abort-on-container-exit
-      env:
-        DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
-        PYTHON_VERSION: ${{ matrix.python_version }}
+      - name: Set up Docker Compose for E2E
+        run: |
+          docker-compose -f ./tests/docker-compose.yml up -d
+          sleep 10
+        env:
+          DOCKERHUB_REPO: ${{ env.DOCKERHUB_REPO }}
 
       
       
