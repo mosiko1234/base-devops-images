@@ -35,6 +35,60 @@ jobs:
         docker pull ${{ secrets.DOCKERHUB_REPO }}/base-image:latest
         docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --severity HIGH,CRITICAL ${{ secrets.DOCKERHUB_REPO }}/base-image:latest
 
+
+  # Job 1.1: Test Base Image
+  test-base-image:
+    name: Test Base Image
+    needs: build-base-image
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Install Docker Compose
+      run: |
+        sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        sudo chmod +x /usr/local/bin/docker-compose
+        docker-compose --version
+
+    - name: Debug Environment Variables
+      run: |
+        echo "DOCKERHUB_REPO=${{ secrets.DOCKERHUB_REPO }}"
+        cat ./tests/docker-compose.yml
+
+    - name: Set up Docker Compose for Base Image E2E
+      run: |
+        docker-compose -f ./tests/docker-compose.base.yml up -d
+      env:
+        DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
+
+    - name: Run E2E Tests for Base Image
+      run: |
+        set +e
+        docker-compose -f ./tests/docker-compose.base.yml up --abort-on-container-exit --exit-code-from base-tests
+        exit_code=$?
+        if [ $exit_code -ne 0 ]; then
+          echo "Base Image E2E tests failed with exit code $exit_code"
+        fi
+        set -e
+      env:
+        DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
+
+    - name: Clean Up Base Image Containers
+      if: always()
+      run: |
+        if [ -f ./tests/docker-compose.base.yml ]; then
+          docker-compose -f ./tests/docker-compose.base.yml down || echo "No active containers to clean up."
+        else
+          echo "No docker-compose.base.yml file found for cleanup."
+        fi
+      env:
+        DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
+
+
+
+
   # Job 2: Build Python Images
   build-python-images:
     name: Build Python Images
