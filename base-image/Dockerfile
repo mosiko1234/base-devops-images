@@ -33,6 +33,19 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Update glibc to the required version
+RUN apt-get update && apt-get install -y wget
+RUN wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz \
+    && tar -xvzf glibc-2.34.tar.gz && cd glibc-2.34 \
+    && mkdir build && cd build \
+    && ../configure --prefix=/usr && make -j$(nproc) && make install \
+    && ldconfig \
+    && cd / && rm -rf glibc-2.34 glibc-2.34.tar.gz
+
+# Verify glibc version
+RUN ldd --version
+
+
 # Install AWS CLI
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
     && unzip awscliv2.zip \
