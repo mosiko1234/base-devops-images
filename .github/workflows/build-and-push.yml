@@ -92,7 +92,7 @@ jobs:
   # Job 2: Build Python Images
   build-python-images:
     name: Build Python Images
-    needs: build-base-image
+    needs: test-base-image
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -140,7 +140,7 @@ jobs:
   # Job 3: Build Java Images
   build-java-images:
     name: Build Java Images
-    needs: build-base-image
+    needs: test-base-image
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -223,10 +223,10 @@ jobs:
     - name: Run E2E Tests
       run: |
         set +e
-        docker-compose -f ./tests/docker-compose.yml up --abort-on-container-exit --exit-code-from python-tests
+        docker-compose -f ./tests/docker-compose.base.yml up --abort-on-container-exit --exit-code-from python-tests
         exit_code=$?
         if [ $exit_code -ne 0 ]; then
-          echo "E2E tests failed with exit code $exit_code"
+          echo "Base Image E2E tests failed with exit code $exit_code"
         fi
         set -e
       env:
