@@ -57,7 +57,7 @@ RUN curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | b
 RUN curl -L "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.8.0/openshift-client-linux.tar.gz" -o oc.tar.gz \
     && tar -xvzf oc.tar.gz -C /usr/local/bin/ \
     && chmod +x /usr/local/bin/oc \
-    && rm oc.tar.gz
+    && rm oc.tar.gz \
     && /usr/local/bin/oc version --client || echo "OpenShift CLI installation verification failed"
 
 # Install ArgoCD CLI
