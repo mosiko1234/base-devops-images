@@ -79,9 +79,34 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
     wget \
     openssh-client \
+    gawk \
+    bison \
+    build-essential \
+    libssl-dev \
+    zlib1g-dev \
+    libbz2-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    libffi-dev \
+    liblzma-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Install updated GLIBC for OpenShift CLI
+RUN wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz && \
+    tar -xvzf glibc-2.34.tar.gz && \
+    cd glibc-2.34 && \
+    mkdir build && cd build && \
+    ../configure --prefix=/opt/glibc-2.34 && \
+    make -j$(nproc) && \
+    make install && \
+    cd ../.. && rm -rf glibc-2.34 glibc-2.34.tar.gz
+    
+# Ensure the updated GLIBC is used
+ENV LD_LIBRARY_PATH="/opt/glibc-2.34/lib:$LD_LIBRARY_PATH"
+
+# Verify the GLIBC version
+RUN /opt/glibc-2.34/lib/ld-2.34.so --version
 # Set working directory
 WORKDIR /workspace
 
