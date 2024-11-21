@@ -4,7 +4,7 @@ services:
   python-tests:
     image: "${DOCKERHUB_REPO}/python-${PYTHON_VERSION}:latest"
     volumes:
-      - ./tests/e2e:/tests/e2e
+      - ./e2e:/tests/e2e
     environment:
       - PYTHON_VERSION=${PYTHON_VERSION}
     entrypoint: >
@@ -21,7 +21,7 @@ services:
   java-tests:
     image: "${DOCKERHUB_REPO}/java-${JAVA_VERSION}:latest"
     volumes:
-      - ./tests/e2e:/tests/e2e
+      - ./e2e:/tests/e2e
     environment:
       - JAVA_VERSION=${JAVA_VERSION}
     entrypoint: >
