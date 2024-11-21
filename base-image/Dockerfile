@@ -77,8 +77,6 @@ RUN wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz && \
 # Verify GLIBC
 RUN /opt/glibc-2.34/lib/ld-2.34.so --version || echo "Failed to verify GLIBC version"
 
----
-
 # Final stage
 FROM ubuntu:20.04
 
