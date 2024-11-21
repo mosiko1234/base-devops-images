@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
 # Install AWS CLI
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
     && unzip awscliv2.zip \
@@ -55,15 +56,16 @@ RUN curl -L "https://gitlab-runner-downloads.s3.amazonaws.com/v16.5.0/binaries/g
 # Final stage
 FROM ubuntu:20.04
 
-# Copy tools and configurations from the builder stage
+# Copy tools and configurations from builder stage
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /usr/bin/yq /usr/bin/yq
+COPY --from=builder /usr/local/aws-cli /usr/local/aws-cli
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
-    PATH="/root/.local/bin:$PATH"
+    PATH="/root/.local/bin:/usr/local/aws-cli/v2/current/bin:$PATH"
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -72,6 +74,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
     vim \
     ca-certificates \
+    gnupg \
+    apt-transport-https \
+    unzip \
+    wget \
     openssh-client \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
