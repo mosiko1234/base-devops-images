@@ -33,6 +33,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     automake \
     libtool \
     texinfo \
+    zlib1g-dev \
+    libssl-dev \
+    libffi-dev \
+    libreadline-dev \
+    libbz2-dev \
     && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -70,8 +75,8 @@ RUN wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz && \
     cd glibc-2.34 && \
     mkdir build && cd build && \
     ../configure --prefix=/opt/glibc-2.34 --disable-werror && \
-    make -j$(nproc) && \
-    make install && \
+    make -j$(nproc) || { echo "Make failed"; exit 1; } && \
+    make install || { echo "Make install failed"; exit 1; } && \
     cd ../.. && rm -rf glibc-2.34 glibc-2.34.tar.gz
 
 # Verify GLIBC
