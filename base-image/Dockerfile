@@ -20,21 +20,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     vim \
     ca-certificates \
     gnupg \
+    apt-transport-https \
     software-properties-common \
+    && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-
-# Install updated GLIBC for OpenShift CLI
-RUN wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz \
-    && tar -xvzf glibc-2.34.tar.gz \
-    && cd glibc-2.34 \
-    && mkdir build && cd build \
-    && ../configure --prefix=/opt/glibc-2.34 \
-    && make -j$(nproc) \
-    && make install \
-    && cd ../.. && rm -rf glibc-2.34 glibc-2.34.tar.gz
-
-ENV LD_LIBRARY_PATH="/opt/glibc-2.34/lib:$LD_LIBRARY_PATH"
 
 # Install AWS CLI
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
@@ -69,14 +59,31 @@ FROM ubuntu:20.04
 # Copy tools and configurations from builder stage
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /usr/bin/yq /usr/bin/yq
-COPY --from=builder /opt/glibc-2.34 /opt/glibc-2.34
+COPY --from=builder /usr/local/aws-cli /usr/local/aws-cli
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
-    PATH="/root/.local/bin:/usr/local/aws-cli/v2/current/bin:$PATH" \
-    LD_LIBRARY_PATH="/opt/glibc-2.34/lib:$LD_LIBRARY_PATH"
+    PATH="/root/.local/bin:/usr/local/aws-cli/v2/current/bin:$PATH"
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    bash \
+    vim \
+    ca-certificates \
+    gnupg \
+    apt-transport-https \
+    unzip \
+    wget \
+    openssh-client \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /workspace
+
+# Define default entrypoint
+ENTRYPOINT ["/bin/bash"]
