@@ -4,10 +4,10 @@ FROM ubuntu:20.04 AS builder
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
-    LC_ALL=C.UTF-8
-    
+    LC_ALL=C.UTF-8 \
+    LD_LIBRARY_PATH="/opt/glibc-2.34/lib"
 
-# Install necessary build tools and dependencies
+# Install build tools and dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libc6 \
@@ -37,7 +37,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-    
 # Install AWS CLI
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
     && unzip awscliv2.zip \
@@ -65,7 +64,7 @@ RUN curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/relea
 RUN curl -L "https://gitlab-runner-downloads.s3.amazonaws.com/v16.5.0/binaries/gitlab-runner-linux-amd64" -o /usr/local/bin/gitlab-runner \
     && chmod +x /usr/local/bin/gitlab-runner
 
-# התקנת GLIBC
+# Install GLIBC
 RUN wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz && \
     tar -xvzf glibc-2.34.tar.gz && \
     cd glibc-2.34 && \
@@ -75,15 +74,10 @@ RUN wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz && \
     make install && \
     cd ../.. && rm -rf glibc-2.34 glibc-2.34.tar.gz
 
-# וידוא GLIBC
+# Verify GLIBC
 RUN /opt/glibc-2.34/lib/ld-2.34.so --version || echo "Failed to verify GLIBC version"
 
-
-# Ensure the updated GLIBC is used
-ENV LD_LIBRARY_PATH="/opt/glibc-2.34/lib:$LD_LIBRARY_PATH"
-
-# Verify the GLIBC version
-RUN /opt/glibc-2.34/lib/ld-2.34.so --version
+---
 
 # Final stage
 FROM ubuntu:20.04
@@ -92,6 +86,7 @@ FROM ubuntu:20.04
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /usr/bin/yq /usr/bin/yq
 COPY --from=builder /usr/local/aws-cli /usr/local/aws-cli
+COPY --from=builder /opt/glibc-2.34 /opt/glibc-2.34
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -99,7 +94,6 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LC_ALL=C.UTF-8 \
     PATH="/root/.local/bin:/usr/local/aws-cli/v2/current/bin:$PATH" \
     LD_LIBRARY_PATH="/opt/glibc-2.34/lib:$LD_LIBRARY_PATH"
-    LD_LIBRARY_PATH="/opt/glibc-2.34/lib"
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
