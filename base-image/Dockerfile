@@ -20,9 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     vim \
     ca-certificates \
     gnupg \
-    apt-transport-https \
     software-properties-common \
-    && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -75,12 +73,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     vim \
     ca-certificates \
     gnupg \
-    apt-transport-https \
     unzip \
     wget \
     openssh-client \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Validate Helm installation
+RUN helm version --short || (echo "Helm installation failed" && exit 1)
+
+# Validate OpenShift CLI installation
+RUN oc version || (echo "OpenShift CLI installation failed" && exit 1)
+
+# Validate ArgoCD CLI installation
+RUN argocd version --client || (echo "ArgoCD CLI installation failed" && exit 1)
 
 # Set working directory
 WORKDIR /workspace
