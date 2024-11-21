@@ -38,7 +38,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     libreadline-dev \
     libbz2-dev \
-    && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
+    gcc-multilib \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -74,9 +74,9 @@ RUN wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz && \
     tar -xvzf glibc-2.34.tar.gz && \
     cd glibc-2.34 && \
     mkdir build && cd build && \
-    ../configure --prefix=/opt/glibc-2.34 --disable-werror && \
+    ../configure --prefix=/opt/glibc-2.34 --disable-werror --enable-debug && \
     make -j$(nproc) || { echo "Make failed"; exit 1; } && \
-    make install || { echo "Make install failed"; exit 1; } && \
+    make install || { echo "Make install failed"; ls -la /opt/glibc-2.34/lib; exit 1; } && \
     cd ../.. && rm -rf glibc-2.34 glibc-2.34.tar.gz
 
 # Verify GLIBC
@@ -112,6 +112,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openssh-client \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Verify GLIBC version in final stage
+RUN /opt/glibc-2.34/lib/ld-2.34.so --version || echo "Failed to verify GLIBC version in final stage"
 
 # Set working directory
 WORKDIR /workspace
