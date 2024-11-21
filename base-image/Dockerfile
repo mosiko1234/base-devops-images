@@ -20,6 +20,7 @@ RUN apt-get update \
         libc6-dev \
         libc-bin \
         curl \
+        git \
         jq \
         bash \
         unzip \
