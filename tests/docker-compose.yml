@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   python-tests:
     image: "${DOCKERHUB_REPO}/python-${PYTHON_VERSION}:latest"
@@ -10,8 +8,9 @@ services:
     entrypoint: >
       /bin/bash -c "
       set -e;
+      chmod +x /tests/e2e/test.sh;
       echo 'Testing Python Image';
-      /tests/e2e/test.sh;s
+      /tests/e2e/test.sh;
       python${PYTHON_VERSION} --version;
       pip --version;
       pip install requests;
@@ -27,6 +26,7 @@ services:
     entrypoint: >
       /bin/bash -c "
       set -e;
+      chmod +x /tests/e2e/test.sh;
       echo 'Testing Java Image';
       /tests/e2e/test.sh;
       java -version;
