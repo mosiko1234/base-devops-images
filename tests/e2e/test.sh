@@ -1,8 +1,11 @@
 #!/bin/bash
 
-set -e
+set +e  # ביטול מצב 'exit on error'
 
 echo "Starting E2E Tests for base image tools..."
+
+# משתנה לספירת כשלים
+fail_count=0
 
 # Helper function to check a command and print its version
 check_tool() {
@@ -12,11 +15,15 @@ check_tool() {
 
     echo -n "Testing $description ($cmd)... "
     if command -v "$cmd" &>/dev/null; then
-        "$cmd" "$version_flag" &>/dev/null || { echo "FAIL"; exit 1; }
-        echo "OK"
+        if ! "$cmd" "$version_flag" &>/dev/null; then
+            echo "FAIL"
+            ((fail_count++))
+        else
+            echo "OK"
+        fi
     else
         echo "FAIL"
-        exit 1
+        ((fail_count++))
     fi
 }
 
@@ -32,7 +39,7 @@ if [ "$BASH_VERSION" ]; then
     echo "OK"
 else
     echo "FAIL"
-    exit 1
+    ((fail_count++))
 fi
 
 # Test unzip
@@ -50,7 +57,7 @@ if [ -f "/etc/ssl/certs/ca-certificates.crt" ]; then
     echo "OK"
 else
     echo "FAIL"
-    exit 1
+    ((fail_count++))
 fi
 
 # Test gnupg
@@ -62,7 +69,7 @@ if apt-get -s update &>/dev/null; then
     echo "OK"
 else
     echo "FAIL"
-    exit 1
+    ((fail_count++))
 fi
 
 # Test software-properties-common
@@ -71,7 +78,7 @@ if command -v "add-apt-repository" &>/dev/null; then
     echo "OK"
 else
     echo "FAIL"
-    exit 1
+    ((fail_count++))
 fi
 
 # Test AWS CLI
@@ -92,4 +99,10 @@ check_tool "argocd" "version --client" "ArgoCD CLI"
 # Test GitLab Runner CLI
 check_tool "gitlab-runner" "--version" "GitLab Runner CLI"
 
-echo "All tests passed successfully!"
+# סיכום הבדיקות
+if [ "$fail_count" -eq 0 ]; then
+    echo "All tests passed successfully!"
+else
+    echo "Tests completed with $fail_count failures."
+    exit 1
+fi
