@@ -38,9 +38,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     libreadline-dev \
     libbz2-dev \
-    gcc-multilib \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Install gcc-multilib for amd64 only
+RUN if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
+    apt-get update && apt-get install -y --no-install-recommends \
+    gcc-multilib \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*; \
+    else \
+    echo "Skipping gcc-multilib installation for non-amd64 architecture"; \
+    fi
 
 # Install AWS CLI
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
@@ -76,7 +85,7 @@ RUN wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz && \
     mkdir build && cd build && \
     ../configure --prefix=/opt/glibc-2.34 --disable-werror --enable-debug && \
     make -j$(nproc) || { echo "Make failed"; exit 1; } && \
-    make install || { echo "Make install failed"; ls -la /opt/glibc-2.34/lib; exit 1; } && \
+    make install || { echo "Make install failed"; exit 1; } && \
     cd ../.. && rm -rf glibc-2.34 glibc-2.34.tar.gz
 
 # Verify GLIBC
