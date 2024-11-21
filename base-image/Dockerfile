@@ -25,7 +25,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-
 # Install AWS CLI
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
     && unzip awscliv2.zip \

@@ -3,35 +3,35 @@ version: "3.9"
 services:
   python-tests:
     image: "${DOCKERHUB_REPO}/python-${PYTHON_VERSION}:latest"
+    volumes:
+      - ./tests/e2e:/tests/e2e
     environment:
       - PYTHON_VERSION=${PYTHON_VERSION}
     entrypoint: >
       /bin/bash -c "
       set -e;
       echo 'Testing Python Image';
+      /tests/e2e/test.sh;s
       python${PYTHON_VERSION} --version;
       pip --version;
       pip install requests;
-      aws --version;
-      echo 'foo: bar' | yq eval '.foo' -;
-      git --version;
-      git init /tmp/test-repo;
       echo 'Python tests passed';
       "
 
   java-tests:
     image: "${DOCKERHUB_REPO}/java-${JAVA_VERSION}:latest"
+    volumes:
+      - ./tests/e2e:/tests/e2e
     environment:
       - JAVA_VERSION=${JAVA_VERSION}
     entrypoint: >
       /bin/bash -c "
       set -e;
       echo 'Testing Java Image';
+      /tests/e2e/test.sh;
       java -version;
       echo 'public class Test { public static void main(String[] args) { System.out.println(\"Hello World\"); }}' > Test.java;
       javac Test.java;
       java Test;
-      helm version;
-      argocd version || echo "ArgoCD CLI validation skipped as server address is not set.";
       echo 'Java tests passed';
       "
