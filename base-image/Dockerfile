@@ -33,19 +33,7 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Update glibc to the required version
-RUN apt-get update && apt-get install -y wget
-RUN wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz \
-    && tar -xvzf glibc-2.34.tar.gz && cd glibc-2.34 \
-    && mkdir build && cd build \
-    && ../configure --prefix=/usr && make -j$(nproc) && make install \
-    && ldconfig \
-    && cd / && rm -rf glibc-2.34 glibc-2.34.tar.gz
-
-# Verify glibc version
-RUN ldd --version
-
-
+    
 # Install AWS CLI
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
     && unzip awscliv2.zip \
@@ -60,12 +48,17 @@ RUN curl -sL "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_
 RUN curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
 # Install OpenShift CLI (oc)
-RUN curl -L "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz" -o oc.tar.gz \
+#RUN curl -L "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz" -o oc.tar.gz \
+#    && tar -xvzf oc.tar.gz -C /usr/local/bin/ \
+#    && chmod +x /usr/local/bin/oc \
+#    && rm oc.tar.gz \
+#    && /usr/local/bin/oc version --client || echo "OpenShift CLI installation verification failed"
+# Install OpenShift CLI (oc) with a compatible version
+RUN curl -L "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.8.0/openshift-client-linux.tar.gz" -o oc.tar.gz \
     && tar -xvzf oc.tar.gz -C /usr/local/bin/ \
     && chmod +x /usr/local/bin/oc \
-    && rm oc.tar.gz \
+    && rm oc.tar.gz
     && /usr/local/bin/oc version --client || echo "OpenShift CLI installation verification failed"
-
 
 # Install ArgoCD CLI
 RUN curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 \
