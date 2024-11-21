@@ -90,14 +90,41 @@ check_tool "yq" "--version" "yq"
 # Test Helm
 check_tool "helm" "version --short" "Helm"
 
+
 # Test OpenShift CLI
-check_tool "oc" "version" "OpenShift CLI"
+check_tool "oc" "version --client" "OpenShift CLI"
+
+# Debugging OpenShift CLI if failed
+if ! command -v "oc" &>/dev/null; then
+    echo "DEBUG: OpenShift CLI not found in PATH"
+elif ! oc version --client &>/dev/null; then
+    echo "DEBUG: OpenShift CLI version command failed. Check glibc compatibility or dependencies."
+fi
+
+# Verify glibc version
+echo -n "Testing glibc compatibility... "
+if ldd --version | grep -q "2.34"; then
+    echo "OK"
+else
+    echo "FAIL - glibc version is incompatible"
+    fail_count=$((fail_count + 1))
+fi
+
 
 # Test ArgoCD CLI
 check_tool "argocd" "version --client" "ArgoCD CLI"
 
 # Test GitLab Runner CLI
 check_tool "gitlab-runner" "--version" "GitLab Runner CLI"
+
+if ! oc version --client &>/dev/null; then
+    echo "DEBUG: OpenShift CLI Logs:"
+    ls -l /usr/local/bin/oc || echo "DEBUG: File not found"
+    ldd /usr/local/bin/oc || echo "DEBUG: Dependency check failed"
+    echo "DEBUG: glibc version:"
+    ldd --version || echo "glibc not found"
+fi
+
 
 # סיכום הבדיקות
 echo ""

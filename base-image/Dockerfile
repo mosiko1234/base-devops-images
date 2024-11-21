@@ -47,10 +47,12 @@ RUN curl -sL "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_
 RUN curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
 # Install OpenShift CLI (oc)
-RUN curl -L "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz" -o oc.tar.gz \
+RUN curl -L "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz" -o oc.tar.gz \
     && tar -xvzf oc.tar.gz -C /usr/local/bin/ \
     && chmod +x /usr/local/bin/oc \
-    && rm oc.tar.gz
+    && rm oc.tar.gz \
+    && /usr/local/bin/oc version --client || echo "OpenShift CLI installation verification failed"
+
 
 # Install ArgoCD CLI
 RUN curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 \
