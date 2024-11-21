@@ -1,84 +1,67 @@
-# Builder stage
-FROM ubuntu:20.04 AS builder
+# Start with a lightweight Linux base image
+FROM ubuntu:20.04
 
 # Set environment variables
-ENV DEBIAN_FRONTEND=noninteractive \
-    LANG=C.UTF-8 \
-    LC_ALL=C.UTF-8 \
-    LD_LIBRARY_PATH="/opt/glibc-2.34/lib:$LD_LIBRARY_PATH"
+ENV PATH="/root/.local/bin:$PATH"
+ENV DEBIAN_FRONTEND=noninteractive
+# Define shell with pipefail
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Install build tools and dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libc6 \
-    libc6-dev \
-    libc-bin \
-    curl \
-    git \
-    bash \
-    unzip \
-    wget \
-    vim \
-    ca-certificates \
-    gnupg \
-    apt-transport-https \
-    software-properties-common \
-    gawk \
-    bison \
-    python3 \
-    python3-dev \
-    python3-pip \
-    gettext \
-    autoconf \
-    automake \
-    libtool \
-    texinfo \
-    zlib1g-dev \
-    libssl-dev \
-    libffi-dev \
-    libreadline-dev \
-    libbz2-dev \
+
+# Update system packages and install essential tools
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        software-properties-common \
+    && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        libc6 \
+        libc6-dev \
+        libc-bin \
+        curl \
+        git \
+        jq \
+        bash \
+        unzip \
+        wget \
+        vim \
+        ca-certificates \
+        openssh-client \
+        apt-transport-https \
+        gnupg \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install GLIBC
-RUN wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz && \
-    tar -xvzf glibc-2.34.tar.gz && \
-    cd glibc-2.34 && \
-    mkdir build && cd build && \
-    ../configure --prefix=/opt/glibc-2.34 --disable-werror --enable-debug && \
-    make -j$(nproc) || { echo "Make failed"; exit 1; } && \
-    make install DESTDIR=/tmp/glibc || { echo "Make install failed"; exit 1; } && \
-    cp -r /tmp/glibc/opt/glibc-2.34/* /opt/glibc-2.34/ && \
-    cd ../.. && rm -rf glibc-2.34 glibc-2.34.tar.gz
+# Install AWS CLI
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
+    && unzip awscliv2.zip \
+    && ./aws/install \
+    && rm -rf aws awscliv2.zip
 
-# Verify GLIBC installation
-RUN /opt/glibc-2.34/lib/ld-2.34.so --version
+# Install yq (YAML processor for DevOps pipelines)
+RUN curl -sL "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64" -o /usr/bin/yq \
+    && chmod +x /usr/bin/yq
 
-# Final stage
-FROM ubuntu:20.04
+# Install Helm (Kubernetes package manager)
+RUN curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
-# Copy GLIBC from builder
-COPY --from=builder /opt/glibc-2.34 /opt/glibc-2.34
+# Install OpenShift CLI (oc)
+RUN curl -L "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz" -o oc.tar.gz \
+    && tar -xvzf oc.tar.gz -C /usr/local/bin/ \
+    && chmod +x /usr/local/bin/oc \
+    && rm oc.tar.gz
 
-# Set environment variables
-ENV DEBIAN_FRONTEND=noninteractive \
-    LANG=C.UTF-8 \
-    LC_ALL=C.UTF-8 \
-    LD_LIBRARY_PATH="/opt/glibc-2.34/lib:$LD_LIBRARY_PATH"
+# Install ArgoCD CLI
+RUN curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 \
+    && chmod +x /usr/local/bin/argocd
 
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    bash \
-    ca-certificates \
-    curl \
-    git \
-    vim \
-    && apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Install GitLab Runner CLI
+RUN curl -L "https://gitlab-runner-downloads.s3.amazonaws.com/v16.5.0/binaries/gitlab-runner-linux-amd64" -o /usr/local/bin/gitlab-runner \
+    && chmod +x /usr/local/bin/gitlab-runner
 
 # Set working directory
 WORKDIR /workspace
 
-# Define default entrypoint
+# Default entrypoint
 ENTRYPOINT ["/bin/bash"]
