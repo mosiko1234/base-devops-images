@@ -41,42 +41,32 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install gcc-multilib for amd64 only
-RUN if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
-    apt-get update && apt-get install -y --no-install-recommends \
-    gcc-multilib \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*; \
-    else \
-    echo "Skipping gcc-multilib installation for non-amd64 architecture"; \
-    fi
-
 # Install AWS CLI
-RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
-    && unzip awscliv2.zip \
-    && ./aws/install \
-    && rm -rf aws awscliv2.zip
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install && \
+    rm -rf aws awscliv2.zip
 
 # Install yq
-RUN curl -sL "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64" -o /usr/bin/yq \
-    && chmod +x /usr/bin/yq
+RUN curl -sL "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64" -o /usr/bin/yq && \
+    chmod +x /usr/bin/yq
 
 # Install Helm
 RUN curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
 # Install OpenShift CLI (oc)
-RUN curl -L "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz" -o oc.tar.gz \
-    && tar -xvzf oc.tar.gz -C /usr/local/bin/ \
-    && chmod +x /usr/local/bin/oc \
-    && rm oc.tar.gz
+RUN curl -L "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz" -o oc.tar.gz && \
+    tar -xvzf oc.tar.gz -C /usr/local/bin/ && \
+    chmod +x /usr/local/bin/oc && \
+    rm oc.tar.gz
 
 # Install ArgoCD CLI
-RUN curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 \
-    && chmod +x /usr/local/bin/argocd
+RUN curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 && \
+    chmod +x /usr/local/bin/argocd
 
 # Install GitLab Runner CLI
-RUN curl -L "https://gitlab-runner-downloads.s3.amazonaws.com/v16.5.0/binaries/gitlab-runner-linux-amd64" -o /usr/local/bin/gitlab-runner \
-    && chmod +x /usr/local/bin/gitlab-runner
+RUN curl -L "https://gitlab-runner-downloads.s3.amazonaws.com/v16.5.0/binaries/gitlab-runner-linux-amd64" -o /usr/local/bin/gitlab-runner && \
+    chmod +x /usr/local/bin/gitlab-runner
 
 # Install GLIBC
 RUN wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz && \
@@ -85,10 +75,11 @@ RUN wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz && \
     mkdir build && cd build && \
     ../configure --prefix=/opt/glibc-2.34 --disable-werror --enable-debug && \
     make -j$(nproc) || { echo "Make failed"; exit 1; } && \
-    make install || { echo "Make install failed"; exit 1; } && \
+    make install DESTDIR=/tmp/glibc || { echo "Make install failed"; exit 1; } && \
+    cp -r /tmp/glibc/opt/glibc-2.34/* /opt/glibc-2.34/ && \
     cd ../.. && rm -rf glibc-2.34 glibc-2.34.tar.gz
 
-# Verify GLIBC
+# Verify GLIBC installation
 RUN /opt/glibc-2.34/lib/ld-2.34.so --version || echo "Failed to verify GLIBC version"
 
 # Final stage
