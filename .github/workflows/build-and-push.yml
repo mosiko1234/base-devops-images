@@ -122,6 +122,7 @@ jobs:
             --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
             --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache,mode=max \
             --cache-to=type=local,dest=/tmp/.buildx-cache \
+            --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
             ${{ matrix.build_args }} \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:v${{ matrix.version }}-$(date +%Y%m%d)-${{ github.sha }} \
