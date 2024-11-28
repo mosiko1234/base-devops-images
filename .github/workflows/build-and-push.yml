@@ -89,10 +89,22 @@ jobs:
       - name: Log in to DockerHub
         run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
+        - name: Check Dockerfile Existence
+        run: |
+          if [ ! -f "./${{ matrix.language }}-layer/Dockerfile.${{ matrix.language }}" ]; then
+            echo "Error: Dockerfile not found at ./${{ matrix.language }}-layer/Dockerfile.${{ matrix.language }}"
+            exit 1
+          fi
+
+      - name: List Files for Debugging
+        run: |
+          echo "Listing files in ./${{ matrix.language }}-layer:"
+          ls -la ./${{ matrix.language }}-layer
+
       - name: Lint Dockerfile with Hadolint
         run: |
           docker pull hadolint/hadolint:latest
-          docker run --rm -i hadolint/hadolint < Dockerfile.${{ matrix.language }} || echo "Lint issues found for Dockerfile.${{ matrix.language }}"
+          docker run --rm -i hadolint/hadolint < ./${{ matrix.language }}-layer/Dockerfile.${{ matrix.language }} || echo "Lint issues found for Dockerfile.${{ matrix.language }}"
 
       - name: Build Dynamic Language Image
         working-directory: ./${{ matrix.language }}-layer
