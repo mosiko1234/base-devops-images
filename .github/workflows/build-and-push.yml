@@ -102,13 +102,18 @@ jobs:
     needs: test-language-images
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
       - name: Generate Build Report
         run: |
           echo "### Build Report" > build-report.md
           echo "- Base Image: ✅" >> build-report.md
           echo "- Language Images:" >> build-report.md
-          echo "${{ fromJson(needs.generate-matrix.outputs.matrix) | map(item => '- ' + item.language + ' ' + item.version + ': ✅').join('\n') }}" >> build-report.md
-
+          
+          MATRIX=${{ needs.generate-matrix.outputs.matrix }}
+          echo "$MATRIX" | jq -r '.[] | "- \(.language) \(.version): ✅"' >> build-report.md
+          
       - name: Upload Build Report
         uses: actions/upload-artifact@v3
         with:
