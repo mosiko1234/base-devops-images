@@ -3,12 +3,12 @@ languages:
     versions:
       - 3.11
       - 3.12
-    build_args:
-      PYTHON_VERSION: "{{ version }}"
-  #java:
-  #  versions:
-  #    - 11
-  #    - 17
-  #  build_args:
-  #    JAVA_VERSION: "{{ version }}"
-#
+  java:
+    versions:
+      - 11
+      - 17
+#  node:
+#    versions:
+#      - 14
+#      - 16
+#      - 18
