@@ -155,46 +155,42 @@ jobs:
           docker pull aquasec/trivy:latest
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 0 --severity HIGH,CRITICAL ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest
 
-      - name: Debug Slack Payload
-        run: |
-          echo '{
-            "text": ":white_check_mark: Build and Tests Completed Successfully\n\n<${{ secrets.DOCKERHUB_REPO }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Build Details>",
-            "attachments": [
-              {
-                "color": "good",
-                "fields": [
-                  {
-                    "title": "Repository",
-                    "value": "${{ github.repository }}",
-                    "short": true
-                  },
-                  {
-                    "title": "Branch",
-                    "value": "${{ github.ref_name }}",
-                    "short": true
-                  },
-                  {
-                    "title": "Build Status",
-                    "value": "success",
-                    "short": true
-                  },
-                  {
-                    "title": "Pipeline Duration",
-                    "value": "83 seconds",
-                    "short": true
-                  }
-                ],
-                "footer": "GitHub Actions",
-                "footer_icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
-                "ts": $(date +%s)
-              }
-            ]
-          }' > slack-payload.json
-          cat slack-payload.json
-
       - name: Send Slack Notification
         uses: slackapi/slack-github-action@v1.23.0
         with:
-          payload-file: slack-payload.json
+          payload: |
+            {
+              "text": ":white_check_mark: Build and Tests Completed Successfully\n\n<${{ secrets.DOCKERHUB_REPO }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Build Details>",
+              "attachments": [
+                {
+                  "color": "good",
+                  "fields": [
+                    {
+                      "title": "Repository",
+                      "value": "${{ github.repository }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Branch",
+                      "value": "${{ github.ref_name }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Build Status",
+                      "value": "success",
+                      "short": true
+                    },
+                    {
+                      "title": "Pipeline Duration",
+                      "value": "83 seconds",
+                      "short": true
+                    }
+                  ],
+                  "footer": "GitHub Actions",
+                  "footer_icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+                  "ts": $(date +%s)
+                }
+              ]
+            }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
