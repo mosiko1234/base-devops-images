@@ -177,6 +177,11 @@ jobs:
         
       - name: Generate Slack Payload
         run: |
+          if [[ "${{ job.status }}" == "success" ]]; then
+            STATUS_TEXT=":white_check_mark: Success"
+          else
+            STATUS_TEXT=":x: Failure"
+          fi
           cat <<EOF > slack-payload.json
           {
             "text": ":information_source: *Build and Test Results*",
@@ -196,7 +201,7 @@ jobs:
                   },
                   {
                     "title": "*Build Status*",
-                    "value": "${{ job.status == 'success' ? ':white_check_mark: Success' : ':x: Failure' }}",
+                    "value": "${STATUS_TEXT}",
                     "short": true
                   },
                   {
@@ -222,6 +227,7 @@ jobs:
             ]
           }
           EOF
+        
                 
       - name: Debug Slack Payload
         run: |
