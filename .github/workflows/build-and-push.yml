@@ -173,43 +173,48 @@ jobs:
         run: |
           cat <<EOF > slack-payload.json
           {
-            "text": "${{ env.SLACK_STATUS_TEXT }}",
+            "text": ":information_source: *Build and Test Results*",
             "attachments": [
               {
                 "color": "${{ env.SLACK_COLOR }}",
                 "fields": [
                   {
-                    "title": "Repository",
-                    "value": "${{ github.repository }}",
+                    "title": "*Repository*",
+                    "value": "<https://github.com/${{ github.repository }}|${{ github.repository }}>",
                     "short": true
                   },
                   {
-                    "title": "Branch",
+                    "title": "*Branch*",
                     "value": "${{ github.ref_name }}",
                     "short": true
                   },
                   {
-                    "title": "Build Status",
-                    "value": "${{ job.status }}",
+                    "title": "*Build Status*",
+                    "value": "${{ job.status == 'success' ? ':white_check_mark: Success' : ':x: Failure' }}",
                     "short": true
                   },
                   {
-                    "title": "Lint Issues",
-                    "value": "Lint reports generated: ${{ env.SLACK_LINT_LOGS }}",
+                    "title": "*Lint Logs*",
+                    "value": "${{ env.SLACK_LINT_LOGS }} logs generated",
                     "short": true
                   },
                   {
-                    "title": "Security Scan Reports",
-                    "value": "Trivy reports generated: ${{ env.SLACK_TRIVY_REPORTS }}",
+                    "title": "*Trivy Scan Reports*",
+                    "value": "${{ env.SLACK_TRIVY_REPORTS }} reports generated",
                     "short": true
+                  },
+                  {
+                    "title": "*Build URL*",
+                    "value": "<https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|Click Here>",
+                    "short": false
                   }
                 ],
-                "footer": "GitHub Actions",
+                "footer": "Workflow Run ID: ${{ github.run_id }} | Duration: ${{ steps.duration.outputs.total_time }} sec",
                 "footer_icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
                 "ts": $(date +%s)
               }
             ]
-          }
+          }          
           EOF
       - name: Debug Slack Payload
         run: |
