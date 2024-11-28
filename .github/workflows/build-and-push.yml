@@ -63,7 +63,7 @@ jobs:
           fi
           MATRIX_COMPACT=$(echo $MATRIX | jq -c '.')
           echo "::set-output name=matrix::$MATRIX_COMPACT"
-    
+
       - name: Debug Generated Matrix
         run: |
           echo "Matrix JSON:"
@@ -84,7 +84,7 @@ jobs:
       - name: Log in to DockerHub
         run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-      - name: Build Language Image
+      - name: Build Dynamic Language Image
         working-directory: ./${{ matrix.language }}-layer
         run: |
           docker buildx create --use
@@ -93,10 +93,12 @@ jobs:
             --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
             --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache,mode=max \
             --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
-            --build-arg VERSION=${{ matrix.version }} \
+            --build-arg JAVA_VERSION=${{ matrix.version }} \
+            --build-arg PYTHON_VERSION=${{ matrix.version }} \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:v${{ matrix.version }}-$(date +%Y%m%d)-${{ github.sha }} \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
+            -f Dockerfile.${{ matrix.language }} \
             --push .
 
       - name: Debug Build Logs
