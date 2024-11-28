@@ -64,10 +64,13 @@ jobs:
           MATRIX_COMPACT=$(echo $MATRIX | jq -c '.')
           echo "::set-output name=matrix::$MATRIX_COMPACT"
 
+      - name: Save Matrix to File
+        run: |
+          echo '${{ steps.create-matrix.outputs.matrix }}' > matrix.json
+
       - name: Debug Generated Matrix
         run: |
-          echo "Matrix JSON:"
-          echo "${{ steps.create-matrix.outputs.matrix }}"
+          cat matrix.json
 
   # Job 3: Build Language Images
   build-language-images:
@@ -109,20 +112,34 @@ jobs:
   # Job 4: Test Language Images
   test-language-images:
     name: Test Language Images
-    needs: build-language-images
+    needs: [build-language-images]
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include: ${{ fromJson(needs.generate-matrix.outputs.matrix || '[]') }}
     steps:
-      - name: Debug Matrix in Test Stage
-        run: |
-          echo "Matrix for testing: '${{ needs.generate-matrix.outputs.matrix }}'"
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-      - name: Log in to DockerHub
-        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-
-      - name: Test Language Image
+      - name: Load Matrix from File
         run: |
-          docker run --rm ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest \
-          ${{ matrix.language }} --version || echo "Test failed for ${{ matrix.language }}-${{ matrix.version }}"
+          MATRIX=$(cat matrix.json)
+          echo "Loaded Matrix: $MATRIX"
+          echo "$MATRIX" > loaded-matrix.json
+
+      - name: Parse Matrix for Tests
+        id: parse-matrix
+        run: |
+          MATRIX=$(cat loaded-matrix.json)
+          echo "::set-output name=matrix::$MATRIX"
+
+      - name: Debug Matrix for Tests
+        run: |
+          echo "Matrix for tests: ${{ steps.parse-matrix.outputs.matrix }}"
+
+      - name: Run Tests
+        run: |
+          MATRIX=$(cat loaded-matrix.json)
+          echo "$MATRIX" | jq -c '.[]' | while read ITEM; do
+            LANGUAGE=$(echo $ITEM | jq -r '.language')
+            VERSION=$(echo $ITEM | jq -r '.version')
+            echo "Testing $LANGUAGE version $VERSION"
+            docker run --rm ${{ secrets.DOCKERHUB_REPO }}/$LANGUAGE-$VERSION:latest $LANGUAGE --version || echo "Test failed for $LANGUAGE-$VERSION"
+          done
