@@ -29,9 +29,11 @@ jobs:
             --platform linux/amd64,linux/arm64 \
             --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
             --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/base-image:cache,mode=max \
+            --cache-to=type=local,dest=/tmp/.buildx-cache \
             -t ${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
+            -t ${{ secrets.DOCKERHUB_REPO }}/base-image:v1.0-$(date +%Y%m%d)-${{ github.sha }} \
+            -t ${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
             --push .
-
   # Job 2: Generate Language Matrix
   generate-matrix:
     name: Generate Language Matrix
@@ -42,21 +44,27 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Parse Configuration
+      - name: Validate Config File
+        run: |
+          if [ ! -f "config.yml" ]; then
+            echo "Error: config.yml not found!"
+            exit 1
+          fi
+          yq '.languages' config.yml || { echo "Invalid config.yml format"; exit 1; }
+      - name: Parse Config File
         id: create-matrix
         run: |
-          MATRIX=$(jq -c '.languages | to_entries | map({"language": .key, "version": .value.versions[]})' languages.json)
+          MATRIX=$(yq -o=json '.languages | to_entries | map({"language": .key, "version": .value.versions[], "build_args": .value.build_args})' config.yml)
           echo "Generated Matrix: $MATRIX"
           if [ -z "$MATRIX" ] || [ "$MATRIX" == "[]" ]; then
             echo "Error: Generated matrix is empty or invalid."
             exit 1
           fi
-          echo "::set-output name=matrix::$MATRIX"
-
+          MATRIX_COMPACT=$(echo $MATRIX | jq -c '.')
+          echo "::set-output name=matrix::$MATRIX_COMPACT"
       - name: Save Matrix to File
         run: |
           echo '${{ steps.create-matrix.outputs.matrix }}' > matrix.json
-
       - name: Upload Matrix as Artifact
         uses: actions/upload-artifact@v3
         with:
@@ -85,14 +93,16 @@ jobs:
             echo "Error: Dockerfile not found at ./${{ matrix.language }}-layer/Dockerfile.${{ matrix.language }}"
             exit 1
           fi
-
+      - name: List Files for Debugging
+        run: |
+          echo "Listing files in ./${{ matrix.language }}-layer:"
+          ls -la ./${{ matrix.language }}-layer
       - name: Lint Dockerfile with Hadolint
         run: |
           mkdir -p ./lint-logs
           docker pull hadolint/hadolint:latest
           docker run --rm -i hadolint/hadolint < ./${{ matrix.language }}-layer/Dockerfile.${{ matrix.language }} || echo "Lint issues found for Dockerfile.${{ matrix.language }}" >> ./lint-logs/${{ matrix.language }}.log
-
-      - name: Build Image
+      - name: Build Dynamic Language Image
         working-directory: ./${{ matrix.language }}-layer
         run: |
           docker buildx create --use
@@ -100,28 +110,26 @@ jobs:
             --platform linux/amd64,linux/arm64 \
             --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
             --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache,mode=max \
+            --cache-to=type=local,dest=/tmp/.buildx-cache \
             --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
             --build-arg JAVA_VERSION=${{ matrix.version }} \
             --build-arg PYTHON_VERSION=${{ matrix.version }} \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest \
+            -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:v${{ matrix.version }}-$(date +%Y%m%d)-${{ github.sha }} \
+            -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
+            -f Dockerfile.${{ matrix.language }} \
             --push .
-
-      - name: Push Image
-        working-directory: ./${{ matrix.language }}-layer
-        if: success()
-        run: |
-          docker push ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest
-
-      - name: Test Image
-        working-directory: ./${{ matrix.language }}-layer
-        run: |
-          docker run --rm ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest --version || echo "Test failed!"
-
       - name: Upload Lint Logs
         uses: actions/upload-artifact@v3
         with:
           name: lint-logs
           path: ./lint-logs/
+
+      - name: Debug Build Logs
+        run: |
+          echo "Language: ${{ matrix.language }}"
+          echo "Version: ${{ matrix.version }}"
+
 
 # Job 4: Security Scan and Notify
   test-and-notify:
