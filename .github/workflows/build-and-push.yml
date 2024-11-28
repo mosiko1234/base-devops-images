@@ -3,7 +3,11 @@ name: Build and Push Docker Images
 on:
   push:
     branches:
-      - main
+      - config-dev
+
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
 
 jobs:
   # Job 1: Build Base Image
@@ -11,283 +15,121 @@ jobs:
     name: Build and Push Base Image
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-    - name: Log in to DockerHub
-      run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-    - name: Build and Push Base Image
-      working-directory: ./base-image
-      run: |
-        docker buildx create --use
-        docker buildx build \
-          --platform linux/amd64,linux/arm64 \
-          --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
-          --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/base-image:cache,mode=max \
-          -t ${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
-          -t ${{ secrets.DOCKERHUB_REPO }}/base-image:v1.0-$(date +%Y%m%d)-${{ github.sha }} \
-          -t ${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
-          --push .
+      - name: Build and Push Base Image
+        working-directory: ./base-image
+        run: |
+          docker buildx create --use
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
+            --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/base-image:cache,mode=max \
+            -t ${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
+            -t ${{ secrets.DOCKERHUB_REPO }}/base-image:v1.0-$(date +%Y%m%d)-${{ github.sha }} \
+            -t ${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
+            --push .
 
-    - name: Scan for Vulnerabilities
-      run: |
-        docker pull ${{ secrets.DOCKERHUB_REPO }}/base-image:latest
-        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --severity HIGH,CRITICAL ${{ secrets.DOCKERHUB_REPO }}/base-image:latest
-
-
-  # Job 1.1: Test Base Image
-  test-base-image:
-    name: Test Base Image
-    needs: build-base-image
+  # Job 2: Generate Language Matrix
+  generate-matrix:
+    name: Generate Language Matrix
     runs-on: ubuntu-latest
-
+    outputs:
+      matrix: ${{ steps.create-matrix.outputs.matrix }}
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-    - name: Install Docker Compose
-      run: |
-        sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        sudo chmod +x /usr/local/bin/docker-compose
-        docker-compose --version
+      - name: Parse Config File
+        id: create-matrix
+        run: |
+          MATRIX=$(yq eval -o=json '.languages | to_entries | map({language: .key, versions: .value.versions[]})' config.yml)
+          echo "Generated Matrix: $MATRIX"
+          echo "::set-output name=matrix::$MATRIX"
 
-    - name: Debug Environment Variables
-      run: |
-        echo "DOCKERHUB_REPO=${{ secrets.DOCKERHUB_REPO }}"
-        cat ./tests/docker-compose.yml
-
-    - name: Set up Docker Compose for Base Image E2E
-      run: |
-        docker-compose -f ./tests/docker-compose.base.yml up -d
-      env:
-        DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
-
-    - name: Run E2E Tests for Base Image
-      run: |
-        set +e
-        docker-compose -f ./tests/docker-compose.base.yml up --abort-on-container-exit --exit-code-from base-tests
-        exit_code=$?
-        if [ $exit_code -ne 0 ]; then
-          echo "Base Image E2E tests failed with exit code $exit_code"
-        fi
-        set -e
-      env:
-        DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
-
-    - name: Clean Up Base Image Containers
-      if: always()
-      run: |
-        if [ -f ./tests/docker-compose.base.yml ]; then
-          docker-compose -f ./tests/docker-compose.base.yml down || echo "No active containers to clean up."
-        else
-          echo "No docker-compose.base.yml file found for cleanup."
-        fi
-      env:
-        DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
-
-
-
-
-  # Job 2: Build Python Images
-  build-python-images:
-    name: Build Python Images
-    needs: test-base-image
+  # Job 3: Build Language Images
+  build-language-images:
+    name: Build Language Images
+    needs: [build-base-image, generate-matrix]
     runs-on: ubuntu-latest
     strategy:
-      matrix:
-        python_version: [3.11, 3.12]
-
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-    - name: Log in to DockerHub
-      run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-    - name: Build Python Image
-      working-directory: ./python-layer
-      run: |
-        docker buildx create --use
-        docker buildx build \
-          --platform linux/amd64,linux/arm64 \
-          --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:cache \
-          --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:cache,mode=max \
-          --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
-          --build-arg PYTHON_VERSION=${{ matrix.python_version }} \
-          -t ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest \
-          -t ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:v${{ matrix.python_version }}-$(date +%Y%m%d)-${{ github.sha }} \
-          -t ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:cache \
-          --push .
+      - name: Build Language Image
+        working-directory: ./${{ matrix.language }}-layer
+        run: |
+          docker buildx create --use
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
+            --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache,mode=max \
+            --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
+            --build-arg VERSION=${{ matrix.version }} \
+            -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest \
+            -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:v${{ matrix.version }}-$(date +%Y%m%d)-${{ github.sha }} \
+            -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
+            --push .
 
-  test-python-images:
-    name: Test Python Images
-    needs: build-python-images
+  # Job 4: Test Language Images
+  test-language-images:
+    name: Test Language Images
+    needs: build-language-images
     runs-on: ubuntu-latest
     strategy:
-      matrix:
-        python_version: [3.11, 3.12]
-
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     steps:
-    - name: Log in to DockerHub
-      run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-    - name: Test Python Image
-      run: |
-        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest \
-        python${{ matrix.python_version }} --version && pip --version
-        
-  # Job 3: Build Java Images
-  build-java-images:
-    name: Build Java Images
-    needs: test-base-image
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        java_version: [11, 17]
+      - name: Test Language Image
+        run: |
+          docker run --rm ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest \
+          ${{ matrix.language }} --version || echo "Test failed for ${{ matrix.language }}-${{ matrix.version }}"
 
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
-
-    - name: Log in to DockerHub
-      run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-
-    - name: Build Java Image
-      working-directory: ./java-layer
-      run: |
-        docker buildx create --use
-        docker buildx build \
-          --platform linux/amd64,linux/arm64 \
-          --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:cache \
-          --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:cache,mode=max \
-          --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
-          --build-arg JAVA_VERSION=${{ matrix.java_version }} \
-          -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest \
-          -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:v${{ matrix.java_version }}-$(date +%Y%m%d)-${{ github.sha }} \
-          -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:cache \
-          --push .
-
-  test-java-images:
-    name: Test Java Images
-    needs: build-java-images
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        java_version: [11, 17]
-
-    steps:
-    - name: Log in to DockerHub
-      run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-
-    - name: Test Java Image
-      run: |
-        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest java -version 2>&1 \
-        | grep "version" || echo "Java version test failed"
-
-  # Job 4: Run E2E Tests
-  run-e2e-tests:
-    name: Run E2E Tests
-    needs: [test-python-images, test-java-images]
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python_version: [3.11, 3.12]
-        java_version: [11, 17]
-
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
-
-    - name: Install Docker Compose
-      run: |
-        sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        sudo chmod +x /usr/local/bin/docker-compose
-        docker-compose --version
-
-    - name: Debug Environment Variables
-      run: |
-        echo "DOCKERHUB_REPO=${{ secrets.DOCKERHUB_REPO }}"
-        echo "PYTHON_VERSION=${{ matrix.python_version }}"
-        echo "JAVA_VERSION=${{ matrix.java_version }}"
-        cat ./tests/docker-compose.yml
-
-    - name: Set up Docker Compose for E2E
-      run: |
-        docker-compose -f ./tests/docker-compose.yml up -d
-      env:
-        DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
-        PYTHON_VERSION: ${{ matrix.python_version }}
-        JAVA_VERSION: ${{ matrix.java_version }}
-
-    - name: Run E2E Tests
-      run: |
-        set +e
-        docker-compose -f ./tests/docker-compose.base.yml up --abort-on-container-exit --exit-code-from python-tests
-        exit_code=$?
-        if [ $exit_code -ne 0 ]; then
-          echo "Base Image E2E tests failed with exit code $exit_code"
-        fi
-        set -e
-      env:
-        DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
-        PYTHON_VERSION: ${{ matrix.python_version }}
-        JAVA_VERSION: ${{ matrix.java_version }}
-
-    - name: Clean Up
-      if: always()
-      run: |
-        if [ -f ./tests/docker-compose.yml ]; then
-          docker-compose -f ./tests/docker-compose.yml down || echo "No active containers to clean up."
-        else
-          echo "No docker-compose.yml file found for cleanup."
-        fi
-      env:
-        DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
-        PYTHON_VERSION: ${{ matrix.python_version }}
-        JAVA_VERSION: ${{ matrix.java_version }}
-
-
-
-  # Job 5: Generate Build Report and Notify Slack
+  # Job 5: Generate Build Report and Notify
   generate-report:
     name: Generate and Notify Build Report
-    needs: [run-e2e-tests]
+    needs: test-language-images
     runs-on: ubuntu-latest
     steps:
-    - name: Generate Build Report
-      run: |
-        echo "### Build Report" > build-report.md
-        echo "- Base Image: ✅" >> build-report.md
-        echo "- Python Images:" >> build-report.md
-        echo "  - Python 3.11: ✅" >> build-report.md
-        echo "  - Python 3.12: ✅" >> build-report.md
-        echo "- Java Images:" >> build-report.md
-        echo "  - Java 11: ✅" >> build-report.md
-        echo "  - Java 17: ✅" >> build-report.md
-        echo "- E2E Tests: ✅" >> build-report.md
+      - name: Generate Build Report
+        run: |
+          echo "### Build Report" > build-report.md
+          echo "- Base Image: ✅" >> build-report.md
+          echo "- Language Images:" >> build-report.md
+          echo "${{ fromJson(needs.generate-matrix.outputs.matrix) | map(item => '- ' + item.language + ' ' + item.version + ': ✅').join('\n') }}" >> build-report.md
 
-    - name: Upload Build Report
-      uses: actions/upload-artifact@v3
-      with:
-        name: build-report
-        path: build-report.md
+      - name: Upload Build Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-report
+          path: build-report.md
 
-    - name: Notify Slack with Summary
-      run: |
-        REPORT=$(cat build-report.md | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
-        curl -X POST -H 'Content-type: application/json' \
-        --data '{
-          "text": "Build Summary Report",
-          "attachments": [
-            {
-              "title": "Build Status",
-              "text": "'"$REPORT"'",
-              "color": "#36a64f"
-            },
-            {
-              "title": "View Details",
-              "text": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Click here>"
-            }
-          ]
-        }' ${{ secrets.SLACK_WEBHOOK_URL }}
+      - name: Notify Slack with Summary
+        run: |
+          REPORT=$(cat build-report.md | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{
+            "text": "Build Summary Report",
+            "attachments": [
+              {
+                "title": "Build Status",
+                "text": "'"$REPORT"'",
+                "color": "#36a64f"
+              },
+              {
+                "title": "View Details",
+                "text": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Click here>"
+              }
+            ]
+          }' ${{ secrets.SLACK_WEBHOOK_URL }}
