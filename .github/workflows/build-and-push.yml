@@ -42,7 +42,7 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-    
+
       - name: Validate Config File
         run: |
           if [ ! -f "config.yml" ]; then
@@ -50,7 +50,7 @@ jobs:
             exit 1
           fi
           yq '.languages' config.yml || { echo "Invalid config.yml format"; exit 1; }
-    
+
       - name: Parse Config File
         id: create-matrix
         run: |
@@ -60,12 +60,13 @@ jobs:
             echo "Error: Generated matrix is empty or invalid."
             exit 1
           fi
-          echo "matrix=$MATRIX" >> $GITHUB_ENV
-    
+          echo "::set-output name=matrix::$MATRIX"
+
       - name: Debug Generated Matrix
         run: |
           echo "Matrix JSON:"
-          echo "${{ env.matrix }}"
+          echo "${{ steps.create-matrix.outputs.matrix }}"
+
 
   # Job 3: Build Language Images
   build-language-images:
@@ -73,14 +74,14 @@ jobs:
     needs: [build-base-image, generate-matrix]
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{ fromJson(env.matrix) }}
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix || '[]') }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-
+    
       - name: Log in to DockerHub
         run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-
+    
       - name: Build Language Image
         working-directory: ./${{ matrix.language }}-layer
         run: |
@@ -95,11 +96,12 @@ jobs:
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:v${{ matrix.version }}-$(date +%Y%m%d)-${{ github.sha }} \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
             --push .
-
+    
       - name: Debug Build Logs
         run: |
           echo "Language: ${{ matrix.language }}"
           echo "Version: ${{ matrix.version }}"
+    
 
   # Job 4: Test Language Images
   test-language-images:
