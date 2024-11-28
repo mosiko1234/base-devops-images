@@ -170,21 +170,21 @@ jobs:
           DURATION=$(( $(date +%s) - $(date -d "${{ github.event.head_commit.timestamp }}" +%s) ))
           TIMESTAMP=$(date +%s)
 
-          echo "::set-output name=color::$COLOR"
-          echo "::set-output name=status_text::$STATUS_TEXT"
-          echo "::set-output name=build_url::$BUILD_URL"
-          echo "::set-output name=duration::$DURATION"
-          echo "::set-output name=timestamp::$TIMESTAMP"
-
+          echo "SLACK_COLOR=$COLOR" >> $GITHUB_ENV
+          echo "SLACK_STATUS_TEXT=$STATUS_TEXT" >> $GITHUB_ENV
+          echo "SLACK_BUILD_URL=$BUILD_URL" >> $GITHUB_ENV
+          echo "SLACK_DURATION=$DURATION" >> $GITHUB_ENV
+          echo "SLACK_TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
+  
       - name: Send Slack Notification
         uses: slackapi/slack-github-action@v1.23.0
         with:
           payload: |
             {
-              "text": "${{ steps.slack-data.outputs.status_text }}",
+              "text": "${{ env.SLACK_STATUS_TEXT }}",
               "attachments": [
                 {
-                  "color": "${{ steps.slack-data.outputs.color }}",
+                  "color": "${{ env.SLACK_COLOR }}",
                   "title": "Pipeline Summary for Build",
                   "fields": [
                     {
@@ -199,7 +199,7 @@ jobs:
                     },
                     {
                       "title": "Build Link",
-                      "value": "<${{ steps.slack-data.outputs.build_url }}|View Build Details>",
+                      "value": "<${{ env.SLACK_BUILD_URL }}|View Build Details>",
                       "short": false
                     },
                     {
@@ -209,16 +209,17 @@ jobs:
                     },
                     {
                       "title": "Pipeline Duration",
-                      "value": "${{ steps.slack-data.outputs.duration }} seconds",
+                      "value": "${{ env.SLACK_DURATION }} seconds",
                       "short": true
                     }
                   ],
                   "text": "Pipeline completed successfully for the following images:\n- Python: 3.11, 3.12\n- Java: 11, 17",
                   "footer": "GitHub Actions",
                   "footer_icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
-                  "ts": ${{ steps.slack-data.outputs.timestamp }}
+                  "ts": ${{ env.SLACK_TIMESTAMP }}
                 }
               ]
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  
