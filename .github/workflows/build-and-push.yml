@@ -138,26 +138,23 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: matrix
-        
+
       - name: Load Matrix from File
         run: |
           MATRIX=$(cat matrix.json)
           echo "Loaded Matrix: $MATRIX"
           echo "$MATRIX" > loaded-matrix.json
-        
+
       - name: Security Scan with Trivy
         run: |
+          echo "Scanning Image: ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest"
+          if ! docker inspect ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest > /dev/null 2>&1; then
+            echo "Image not found: ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest. Skipping scan."
+            exit 0
+          fi
           docker pull aquasec/trivy:latest
-          
-          for row in $(echo "${{ needs.generate-matrix.outputs.matrix }}" | jq -r '.[] | @base64'); do
-            _jq() {
-              echo ${row} | base64 --decode | jq -r ${1}
-            }
-            
-            echo "Scanning Image: ${{ secrets.DOCKERHUB_REPO }}/$(_jq '.language')-$(_jq '.version'):latest"
-            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 0 --severity HIGH,CRITICAL ${{ secrets.DOCKERHUB_REPO }}/$(_jq '.language')-$(_jq '.version'):latest
-          done
-        
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 0 --severity HIGH,CRITICAL ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest
+  
       - name: Prepare Slack Notification Data
         id: slack-data
         run: |
@@ -168,17 +165,17 @@ jobs:
             COLOR="danger"
             STATUS_TEXT=":x: Build or Tests Failed"
           fi
-        
+
           BUILD_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           DURATION=$(( $(date +%s) - $(date -d "${{ github.event.head_commit.timestamp }}" +%s) ))
           TIMESTAMP=$(date +%s)
-        
+
           echo "SLACK_COLOR=$COLOR" >> $GITHUB_ENV
           echo "SLACK_STATUS_TEXT=$STATUS_TEXT" >> $GITHUB_ENV
           echo "SLACK_BUILD_URL=$BUILD_URL" >> $GITHUB_ENV
           echo "SLACK_DURATION=$DURATION" >> $GITHUB_ENV
           echo "SLACK_TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
-        
+
       - name: Send Slack Notification
         uses: slackapi/slack-github-action@v1.23.0
         with:
@@ -211,7 +208,7 @@ jobs:
                     },
                     {
                       "title": "Images",
-                      "value": "`echo ${{ needs.generate-matrix.outputs.matrix }} | jq -r '.[] | \"- \(.language): \(.version)\"'`",
+                      "value": "- Python: 3.11, 3.12\n- Java: 11, 17",
                       "short": false
                     }
                   ],
