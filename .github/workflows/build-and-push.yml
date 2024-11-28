@@ -42,7 +42,7 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-    
+
       - name: Validate Config File
         run: |
           if [ ! -f "config.yml" ]; then
@@ -50,7 +50,7 @@ jobs:
             exit 1
           fi
           yq '.languages' config.yml || { echo "Invalid config.yml format"; exit 1; }
-    
+
       - name: Parse Config File
         id: create-matrix
         run: |
@@ -60,19 +60,22 @@ jobs:
             echo "Error: Generated matrix is empty or invalid."
             exit 1
           fi
-          echo "$MATRIX" > matrix.json
-          echo "matrix=$(cat matrix.json)" >> $GITHUB_ENV
-    
+          echo "matrix=$(echo $MATRIX | jq -c '.')" >> $GITHUB_ENV
+
+
       - name: Debug Generated Matrix
         run: |
           echo "Matrix JSON:"
           cat matrix.json
+
+
+
   build-language-images:
     name: Build Language Images
     needs: [build-base-image, generate-matrix]
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+      matrix: ${{ fromJson(env.matrix) }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
