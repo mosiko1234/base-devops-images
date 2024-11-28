@@ -128,9 +128,9 @@ jobs:
           echo "Language: ${{ matrix.language }}"
           echo "Version: ${{ matrix.version }}"
 
-  # Job 4: Test and Scan Language Images
-  test-language-images:
-    name: Test Language Images
+  # Job 4: Test and Notify
+  test-and-notify:
+    name: Test and Notify
     needs: [build-language-images]
     runs-on: ubuntu-latest
     steps:
@@ -154,69 +154,47 @@ jobs:
           fi
           docker pull aquasec/trivy:latest
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 0 --severity HIGH,CRITICAL ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest
-  
-      - name: Prepare Slack Notification Data
-        id: slack-data
+
+      - name: Debug Slack Payload
         run: |
-          if [[ "${{ job.status }}" == "success" ]]; then
-            COLOR="good"
-            STATUS_TEXT=":white_check_mark: Build and Tests Completed Successfully"
-          else
-            COLOR="danger"
-            STATUS_TEXT=":x: Build or Tests Failed"
-          fi
-
-          BUILD_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          DURATION=$(( $(date +%s) - $(date -d "${{ github.event.head_commit.timestamp }}" +%s) ))
-          TIMESTAMP=$(date +%s)
-
-          echo "SLACK_COLOR=$COLOR" >> $GITHUB_ENV
-          echo "SLACK_STATUS_TEXT=$STATUS_TEXT" >> $GITHUB_ENV
-          echo "SLACK_BUILD_URL=$BUILD_URL" >> $GITHUB_ENV
-          echo "SLACK_DURATION=$DURATION" >> $GITHUB_ENV
-          echo "SLACK_TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
+          echo '{
+            "text": ":white_check_mark: Build and Tests Completed Successfully\n\n<${{ secrets.DOCKERHUB_REPO }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Build Details>",
+            "attachments": [
+              {
+                "color": "good",
+                "fields": [
+                  {
+                    "title": "Repository",
+                    "value": "${{ github.repository }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Branch",
+                    "value": "${{ github.ref_name }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Build Status",
+                    "value": "success",
+                    "short": true
+                  },
+                  {
+                    "title": "Pipeline Duration",
+                    "value": "83 seconds",
+                    "short": true
+                  }
+                ],
+                "footer": "GitHub Actions",
+                "footer_icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+                "ts": $(date +%s)
+              }
+            ]
+          }' > slack-payload.json
+          cat slack-payload.json
 
       - name: Send Slack Notification
         uses: slackapi/slack-github-action@v1.23.0
         with:
-          payload: |
-            {
-              "text": "${{ env.SLACK_STATUS_TEXT }}\n\n<${{ env.SLACK_BUILD_URL }}|Click here to view build details>",
-              "attachments": [
-                {
-                  "color": "${{ env.SLACK_COLOR }}",
-                  "fields": [
-                    {
-                      "title": "Repository",
-                      "value": "${{ github.repository }}",
-                      "short": true
-                    },
-                    {
-                      "title": "Branch",
-                      "value": "${{ github.ref_name }}",
-                      "short": true
-                    },
-                    {
-                      "title": "Build Status",
-                      "value": "${{ job.status }}",
-                      "short": true
-                    },
-                    {
-                      "title": "Pipeline Duration",
-                      "value": "${{ env.SLACK_DURATION }} seconds",
-                      "short": true
-                    },
-                    {
-                      "title": "Images",
-                      "value": "- Python: 3.11, 3.12\n- Java: 11, 17",
-                      "short": false
-                    }
-                  ],
-                  "footer": "GitHub Actions",
-                  "footer_icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
-                  "ts": ${{ env.SLACK_TIMESTAMP }}
-                }
-              ]
-            }
+          payload-file: slack-payload.json
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
