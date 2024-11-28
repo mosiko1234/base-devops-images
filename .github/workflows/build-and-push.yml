@@ -43,7 +43,7 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-    
+
       - name: Validate Config File
         run: |
           if [ ! -f "config.yml" ]; then
@@ -51,7 +51,7 @@ jobs:
             exit 1
           fi
           yq '.languages' config.yml || { echo "Invalid config.yml format"; exit 1; }
-    
+
       - name: Parse Config File
         id: create-matrix
         run: |
@@ -75,7 +75,8 @@ jobs:
     needs: [build-base-image, generate-matrix]
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+      matrix:
+        include: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -109,7 +110,8 @@ jobs:
     needs: build-language-images
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+      matrix:
+        include: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     steps:
       - name: Log in to DockerHub
         run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
