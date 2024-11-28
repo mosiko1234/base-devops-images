@@ -18,14 +18,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Validate Config File
-        run: |
-          if [ ! -f "config.yml" ]; then
-            echo "Error: config.yml not found!"
-            exit 1
-          fi
-          yq '.languages' config.yml || { echo "Invalid config.yml format"; exit 1; }
-
       - name: Log in to DockerHub
         run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
@@ -42,6 +34,7 @@ jobs:
             -t ${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
             --push .
 
+  # Job 2: Generate Language Matrix
   generate-matrix:
     name: Generate Language Matrix
     runs-on: ubuntu-latest
@@ -68,22 +61,20 @@ jobs:
             echo "Error: Generated matrix is empty or invalid."
             exit 1
           fi
-          echo "matrix=$(echo $MATRIX | jq -c '.')" >> $GITHUB_ENV
-
+          echo "::set-output name=matrix::$(echo $MATRIX | jq -c '.')"
 
       - name: Debug Generated Matrix
         run: |
           echo "Matrix JSON:"
-          cat matrix.json
+          echo "${{ steps.create-matrix.outputs.matrix }}"
 
-
-
+  # Job 3: Build Language Images
   build-language-images:
     name: Build Language Images
     needs: [build-base-image, generate-matrix]
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{ fromJson(env.matrix) }}
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -111,24 +102,18 @@ jobs:
           echo "Language: ${{ matrix.language }}"
           echo "Version: ${{ matrix.version }}"
 
-
   # Job 4: Test Language Images
   test-language-images:
     name: Test Language Images
     needs: build-language-images
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix || '[]') }}
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     steps:
       - name: Log in to DockerHub
         run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
       - name: Test Language Image
         run: |
-          if [ -z ${{ matrix.language }} ] || [ -z ${{ matrix.version }} ]; then
-            echo "Error: Language or Version is empty"
-            exit 1
-          fi
           docker run --rm ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest \
           ${{ matrix.language }} --version || echo "Test failed for ${{ matrix.language }}-${{ matrix.version }}"
-
