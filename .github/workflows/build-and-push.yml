@@ -68,9 +68,11 @@ jobs:
         run: |
           echo '${{ steps.create-matrix.outputs.matrix }}' > matrix.json
 
-      - name: Debug Generated Matrix
-        run: |
-          cat matrix.json
+      - name: Upload Matrix as Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: matrix
+          path: matrix.json
 
   # Job 3: Build Language Images
   build-language-images:
@@ -115,8 +117,10 @@ jobs:
     needs: [build-language-images]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - name: Download Matrix Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: matrix
 
       - name: Load Matrix from File
         run: |
@@ -141,5 +145,5 @@ jobs:
             LANGUAGE=$(echo $ITEM | jq -r '.language')
             VERSION=$(echo $ITEM | jq -r '.version')
             echo "Testing $LANGUAGE version $VERSION"
-            docker run --rm ${{ secrets.DOCKERHUB_REPO }}/$LANGUAGE-$VERSION:latest $LANGUAGE --version || echo "Test failed for $LANGUAGE-$VERSION"
+            docker run --rm ${{ secrets.DOCKERHUB_REPO }}/${LANGUAGE}-${VERSION}:latest $LANGUAGE --version || echo "Test failed for $LANGUAGE-$VERSION"
           done
