@@ -167,11 +167,13 @@ jobs:
           fi
 
           BUILD_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          DURATION=$(( $(date +%s) - $(date -d "${{ github.event.head_commit.timestamp }}" +%s) ))
           TIMESTAMP=$(date +%s)
 
           echo "::set-output name=color::$COLOR"
           echo "::set-output name=status_text::$STATUS_TEXT"
           echo "::set-output name=build_url::$BUILD_URL"
+          echo "::set-output name=duration::$DURATION"
           echo "::set-output name=timestamp::$TIMESTAMP"
 
       - name: Send Slack Notification
@@ -183,7 +185,7 @@ jobs:
               "attachments": [
                 {
                   "color": "${{ steps.slack-data.outputs.color }}",
-                  "title": "Pipeline Summary",
+                  "title": "Pipeline Summary for Build",
                   "fields": [
                     {
                       "title": "Repository",
@@ -211,7 +213,7 @@ jobs:
                       "short": true
                     }
                   ],
-                  "text": "Pipeline completed for the following images:\n${{ matrix.language }}:${{ matrix.version }}",
+                  "text": "Pipeline completed successfully for the following images:\n- Python: 3.11, 3.12\n- Java: 11, 17",
                   "footer": "GitHub Actions",
                   "footer_icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
                   "ts": ${{ steps.slack-data.outputs.timestamp }}
