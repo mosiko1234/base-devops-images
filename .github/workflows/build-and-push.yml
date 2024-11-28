@@ -29,6 +29,7 @@ jobs:
             --platform linux/amd64,linux/arm64 \
             --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
             --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/base-image:cache,mode=max \
+            --cache-to=type=local,dest=/tmp/.buildx-cache \
             -t ${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
             -t ${{ secrets.DOCKERHUB_REPO }}/base-image:v1.0-$(date +%Y%m%d)-${{ github.sha }} \
             -t ${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
@@ -82,6 +83,7 @@ jobs:
     strategy:
       matrix:
         include: ${{ fromJson(needs.generate-matrix.outputs.matrix || '[]') }}
+      max-parallel: 4
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -102,7 +104,6 @@ jobs:
           ls -la ./${{ matrix.language }}-layer
 
       - name: Lint Dockerfile with Hadolint
-        continue-on-error: true
         run: |
           mkdir -p ./lint-logs
           docker pull hadolint/hadolint:latest
@@ -116,6 +117,7 @@ jobs:
             --platform linux/amd64,linux/arm64 \
             --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
             --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache,mode=max \
+            --cache-to=type=local,dest=/tmp/.buildx-cache \
             --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
             --build-arg JAVA_VERSION=${{ matrix.version }} \
             --build-arg PYTHON_VERSION=${{ matrix.version }} \
@@ -126,7 +128,6 @@ jobs:
             --push .
 
       - name: Upload Lint Logs
-        if: always()
         uses: actions/upload-artifact@v3
         with:
           name: lint-logs
@@ -137,7 +138,7 @@ jobs:
           echo "Language: ${{ matrix.language }}"
           echo "Version: ${{ matrix.version }}"
 
-  # Job 4: Test and Notify
+  # Job 4: Security Scan and Notify
   test-and-notify:
     name: Test and Notify
     needs: [build-language-images]
@@ -148,93 +149,34 @@ jobs:
         with:
           name: matrix
 
-      - name: Load Matrix from File
-        run: |
-          MATRIX=$(cat matrix.json)
-          echo "Loaded Matrix: $MATRIX"
-          echo "$MATRIX" > loaded-matrix.json
-
       - name: Security Scan with Trivy
-        continue-on-error: true
         run: |
           mkdir -p ./trivy-scan-report
           docker pull aquasec/trivy:latest
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 0 --severity HIGH,CRITICAL ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest > ./trivy-scan-report/${{ matrix.language }}.log || echo "Scan completed with findings."
 
       - name: Upload Trivy Scan Report
-        if: always()
         uses: actions/upload-artifact@v3
         with:
           name: trivy-scan-report
           path: ./trivy-scan-report/
 
-      - name: Prepare Slack Notification Data
-        id: slack-data
-        run: |
-          if [[ "${{ job.status }}" == "success" ]]; then
-            COLOR="good"
-            STATUS_TEXT=":white_check_mark: Build and Tests Completed Successfully"
-          else
-            COLOR="danger"
-            STATUS_TEXT=":x: Build or Tests Failed"
-          fi
-
-          BUILD_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          DURATION=$(( $(date +%s) - $(date -d "${{ github.event.head_commit.timestamp }}" +%s) ))
-          TIMESTAMP=$(date +%s)
-
-          echo "SLACK_COLOR=$COLOR" >> $GITHUB_ENV
-          echo "SLACK_STATUS_TEXT=$STATUS_TEXT" >> $GITHUB_ENV
-          echo "SLACK_BUILD_URL=$BUILD_URL" >> $GITHUB_ENV
-          echo "SLACK_DURATION=$DURATION" >> $GITHUB_ENV
-          echo "SLACK_TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
-
-      - name: Generate Slack Payload
-        run: |
-          cat <<EOF > slack-payload.json
-          {
-            "text": "${{ env.SLACK_STATUS_TEXT }}\\n\\n<${{ env.SLACK_BUILD_URL }}|Click here to view build details>",
-            "attachments": [
-              {
-                "color": "${{ env.SLACK_COLOR }}",
-                "fields": [
-                  {
-                    "title": "Repository",
-                    "value": "${{ github.repository }}",
-                    "short": true
-                  },
-                  {
-                    "title": "Branch",
-                    "value": "${{ github.ref_name }}",
-                    "short": true
-                  },
-                  {
-                    "title": "Build Status",
-                    "value": "${{ job.status }}",
-                    "short": true
-                  },
-                  {
-                    "title": "Pipeline Duration",
-                    "value": "${{ env.SLACK_DURATION }} seconds",
-                    "short": true
-                  }
-                ],
-                "footer": "GitHub Actions",
-                "footer_icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
-                "ts": $(( $(date +%s) ))
-              }
-            ]
-          }
-          EOF
-
-      - name: Debug Slack Payload
-        run: |
-          echo "Slack Payload:"
-          cat slack-payload.json
-
       - name: Send Slack Notification
         uses: slackapi/slack-github-action@v1.23.0
         with:
-          payload-file-path: ./slack-payload.json
+          payload: >
+            {
+              "text": "Build Status: ${{ job.status }} for ${{ github.repository }}",
+              "attachments": [
+                {
+                  "title": "Build Details",
+                  "title_link": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+                  "fields": [
+                    {"title": "Branch", "value": "${{ github.ref_name }}", "short": true},
+                    {"title": "Status", "value": "${{ job.status }}", "short": true}
+                  ]
+                }
+              ]
+            }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
