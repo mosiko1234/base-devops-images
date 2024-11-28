@@ -18,6 +18,14 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      - name: Validate Config File
+        run: |
+          if [ ! -f "config.yml" ]; then
+            echo "Error: config.yml not found!"
+            exit 1
+          fi
+          yq '.languages' config.yml || { echo "Invalid config.yml format"; exit 1; }
+
       - name: Log in to DockerHub
         run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
@@ -79,10 +87,10 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-    
+
       - name: Log in to DockerHub
         run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-    
+
       - name: Build Language Image
         working-directory: ./${{ matrix.language }}-layer
         run: |
@@ -97,12 +105,12 @@ jobs:
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:v${{ matrix.version }}-$(date +%Y%m%d)-${{ github.sha }} \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
             --push .
-    
+
       - name: Debug Build Logs
         run: |
           echo "Language: ${{ matrix.language }}"
           echo "Version: ${{ matrix.version }}"
-    
+
 
   # Job 4: Test Language Images
   test-language-images:
@@ -117,5 +125,10 @@ jobs:
 
       - name: Test Language Image
         run: |
+          if [ -z ${{ matrix.language }} ] || [ -z ${{ matrix.version }} ]; then
+            echo "Error: Language or Version is empty"
+            exit 1
+          fi
           docker run --rm ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest \
           ${{ matrix.language }} --version || echo "Test failed for ${{ matrix.language }}-${{ matrix.version }}"
+
