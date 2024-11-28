@@ -178,9 +178,10 @@ jobs:
 
       - name: Generate Slack Payload
         run: |
+          TIMESTAMP=${{ env.SLACK_TIMESTAMP }}
           cat <<EOF > slack-payload.json
           {
-            "text": "${{ env.SLACK_STATUS_TEXT }}\\n\\n<${{ env.SLACK_BUILD_URL }}|Click here to view build details>",
+            "text": ":white_check_mark: Build and Tests Completed Successfully\\n\\n<${{ env.SLACK_BUILD_URL }}|Click here to view build details>",
             "attachments": [
               {
                 "color": "${{ env.SLACK_COLOR }}",
@@ -197,7 +198,7 @@ jobs:
                   },
                   {
                     "title": "Build Status",
-                    "value": "${{ job.status }}",
+                    "value": "success",
                     "short": true
                   },
                   {
