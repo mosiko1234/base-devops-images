@@ -34,6 +34,7 @@ jobs:
             -t ${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
             --push .
 
+  # Job 2: Generate Language Matrix
   generate-matrix:
     name: Generate Language Matrix
     runs-on: ubuntu-latest
@@ -61,9 +62,8 @@ jobs:
             exit 1
           fi
           MATRIX_COMPACT=$(echo $MATRIX | jq -c '.')
-          echo "$MATRIX_COMPACT" >> $GITHUB_ENV
           echo "::set-output name=matrix::$MATRIX_COMPACT"
-
+    
       - name: Debug Generated Matrix
         run: |
           echo "Matrix JSON:"
@@ -75,7 +75,7 @@ jobs:
     needs: [build-base-image, generate-matrix]
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{ fromJson(env.MATRIX) }}
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -109,7 +109,7 @@ jobs:
     needs: build-language-images
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{ fromJson(env.MATRIX) }}
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     steps:
       - name: Log in to DockerHub
         run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
