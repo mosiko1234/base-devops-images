@@ -55,7 +55,7 @@ jobs:
       - name: Parse Config File
         id: create-matrix
         run: |
-          MATRIX=$(yq -o=json '.languages | to_entries | map({"language": .key, "version": .value.versions[]})' config.yml)
+          MATRIX=$(yq -o=json '.languages | to_entries | map({"language": .key, "version": .value.versions[], "build_args": .value.build_args})' config.yml)
           echo "Generated Matrix: $MATRIX"
           if [ -z "$MATRIX" ] || [ "$MATRIX" == "[]" ]; then
             echo "Error: Generated matrix is empty or invalid."
@@ -91,7 +91,7 @@ jobs:
 
       - name: Check Dockerfile Existence
         run: |
-          if [ ! -f ./${{ matrix.language }}-layer/Dockerfile.${{ matrix.language }} ]; then
+          if [ ! -f "./${{ matrix.language }}-layer/Dockerfile.${{ matrix.language }}" ]; then
             echo "Error: Dockerfile not found at ./${{ matrix.language }}-layer/Dockerfile.${{ matrix.language }}"
             exit 1
           fi
@@ -117,11 +117,12 @@ jobs:
             --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
             --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache,mode=max \
             --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
-            --build-arg VERSION=${{ matrix.version }} \
+            --build-arg JAVA_VERSION=${{ matrix.version }} \
+            --build-arg PYTHON_VERSION=${{ matrix.version }} \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:v${{ matrix.version }}-$(date +%Y%m%d)-${{ github.sha }} \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
-            -f ./${{ matrix.language }}-layer/Dockerfile.${{ matrix.language }} \
+            -f Dockerfile.${{ matrix.language }} \
             --push .
 
       - name: Upload Lint Logs
@@ -130,6 +131,11 @@ jobs:
         with:
           name: lint-logs
           path: ./lint-logs/
+
+      - name: Debug Build Logs
+        run: |
+          echo "Language: ${{ matrix.language }}"
+          echo "Version: ${{ matrix.version }}"
 
   # Job 4: Test and Notify
   test-and-notify:
@@ -220,6 +226,11 @@ jobs:
             ]
           }
           EOF
+
+      - name: Debug Slack Payload
+        run: |
+          echo "Slack Payload:"
+          cat slack-payload.json
 
       - name: Send Slack Notification
         uses: slackapi/slack-github-action@v1.23.0
