@@ -117,7 +117,7 @@ jobs:
     steps:
       - name: Log in to DockerHub
         run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-    
+
       - name: Test Language Image
         run: |
           if [ -z "${{ matrix.language }}" ] || [ -z "${{ matrix.version }}" ]; then
@@ -126,4 +126,3 @@ jobs:
           fi
           docker run --rm ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest \
           ${{ matrix.language }} --version || echo "Test failed for ${{ matrix.language }}-${{ matrix.version }}"
-    
