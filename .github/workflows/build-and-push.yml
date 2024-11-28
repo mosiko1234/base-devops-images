@@ -155,23 +155,23 @@ jobs:
           docker pull aquasec/trivy:latest
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 0 --severity HIGH,CRITICAL ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest
   
-          - name: Prepare Slack Notification Data
-          id: slack-data
-          run: |
-            if [[ "${{ job.status }}" == "success" ]]; then
-              COLOR="good"
-              STATUS_TEXT=":white_check_mark: Build and Tests Completed Successfully"
-            else
-              COLOR="danger"
-              STATUS_TEXT=":x: Build or Tests Failed"
-            fi
-  
-            BUILD_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            DURATION=$(( $(date +%s) - $(date -d "${{ github.event.pull_request.created_at }}" +%s) ))
-            echo "::set-output name=color::$COLOR"
-            echo "::set-output name=status_text::$STATUS_TEXT"
-            echo "::set-output name=build_url::$BUILD_URL"
-            echo "::set-output name=duration::$DURATION"
+      - name: Prepare Slack Notification Data
+        id: slack-data
+        run: |
+          if [[ "${{ job.status }}" == "success" ]]; then
+            COLOR="good"
+            STATUS_TEXT=":white_check_mark: Build and Tests Completed Successfully"
+          else
+            COLOR="danger"
+            STATUS_TEXT=":x: Build or Tests Failed"
+          fi
+
+          BUILD_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          DURATION=$(( $(date +%s) - $(date -d "${{ github.event.pull_request.created_at }}" +%s) ))
+          echo "::set-output name=color::$COLOR"
+          echo "::set-output name=status_text::$STATUS_TEXT"
+          echo "::set-output name=build_url::$BUILD_URL"
+          echo "::set-output name=duration::$DURATION"
   
       - name: Send Slack Notification
         uses: slackapi/slack-github-action@v1.23.0
