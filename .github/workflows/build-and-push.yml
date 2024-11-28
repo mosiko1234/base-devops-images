@@ -129,7 +129,10 @@ jobs:
         run: |
           echo "Language: ${{ matrix.language }}"
           echo "Version: ${{ matrix.version }}"
-  # Job 4: Security Scan and Notify
+
+
+
+  # Job 4: Security Scan and Notify (Enhanced Slack Notifications)
   test-and-notify:
     name: Test and Notify
     needs: [build-language-images]
@@ -139,18 +142,20 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: matrix
-
+        
       - name: Security Scan with Trivy
         run: |
           mkdir -p ./trivy-scan-report
           docker pull aquasec/trivy:latest
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 0 --severity HIGH,CRITICAL ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest > ./trivy-scan-report/${{ matrix.language }}.log || echo "Scan completed with findings."
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image \
+            --exit-code 0 --severity HIGH,CRITICAL ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest > ./trivy-scan-report/${{ matrix.language }}.log || echo "Scan completed with findings."
+        
       - name: Upload Trivy Scan Report
         uses: actions/upload-artifact@v3
         with:
           name: trivy-scan-report
           path: ./trivy-scan-report/
-
+        
       - name: Prepare Slack Notification Data
         id: slack-data
         run: |
@@ -162,13 +167,14 @@ jobs:
             STATUS_TEXT=":x: Build or Tests Failed"
           fi
           BUILD_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          LINT_LOGS=$(ls ./lint-logs/ | wc -l)
-          TRIVY_REPORTS=$(ls ./trivy-scan-report/ | wc -l)
+          LINT_LOGS=$(ls ./lint-logs/ | wc -l || echo "0")
+          TRIVY_REPORTS=$(ls ./trivy-scan-report/ | wc -l || echo "0")
           echo "SLACK_COLOR=$COLOR" >> $GITHUB_ENV
           echo "SLACK_STATUS_TEXT=$STATUS_TEXT" >> $GITHUB_ENV
           echo "SLACK_BUILD_URL=$BUILD_URL" >> $GITHUB_ENV
           echo "SLACK_LINT_LOGS=$LINT_LOGS" >> $GITHUB_ENV
           echo "SLACK_TRIVY_REPORTS=$TRIVY_REPORTS" >> $GITHUB_ENV
+        
       - name: Generate Slack Payload
         run: |
           cat <<EOF > slack-payload.json
@@ -205,7 +211,7 @@ jobs:
                   },
                   {
                     "title": "*Build URL*",
-                    "value": "<https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|Click Here>",
+                    "value": "<${{ env.SLACK_BUILD_URL }}|Click Here>",
                     "short": false
                   }
                 ],
@@ -214,15 +220,18 @@ jobs:
                 "ts": $(date +%s)
               }
             ]
-          }          
+          }
           EOF
+                
       - name: Debug Slack Payload
         run: |
           echo "Slack Payload:"
           cat slack-payload.json
+                
       - name: Send Slack Notification
         uses: slackapi/slack-github-action@v1.23.0
         with:
           payload-file-path: ./slack-payload.json
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        
