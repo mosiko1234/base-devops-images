@@ -61,13 +61,13 @@ jobs:
             exit 1
           fi
           MATRIX_COMPACT=$(echo $MATRIX | jq -c '.')
+          echo "$MATRIX_COMPACT" >> $GITHUB_ENV
           echo "::set-output name=matrix::$MATRIX_COMPACT"
-    
+
       - name: Debug Generated Matrix
         run: |
           echo "Matrix JSON:"
           echo "${{ steps.create-matrix.outputs.matrix }}"
-
 
   # Job 3: Build Language Images
   build-language-images:
@@ -75,7 +75,7 @@ jobs:
     needs: [build-base-image, generate-matrix]
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+      matrix: ${{ fromJson(env.MATRIX) }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -103,14 +103,13 @@ jobs:
           echo "Language: ${{ matrix.language }}"
           echo "Version: ${{ matrix.version }}"
 
-
   # Job 4: Test Language Images
   test-language-images:
     name: Test Language Images
     needs: build-language-images
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+      matrix: ${{ fromJson(env.MATRIX) }}
     steps:
       - name: Log in to DockerHub
         run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
