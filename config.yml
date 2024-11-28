@@ -5,9 +5,10 @@ languages:
       - 3.12
     build_args:
       PYTHON_VERSION: "{{ version }}"
-  java:
-    versions:
-      - 11
-      - 17
-    build_args:
-      JAVA_VERSION: "{{ version }}"
+  #java:
+  #  versions:
+  #    - 11
+  #    - 17
+  #  build_args:
+  #    JAVA_VERSION: "{{ version }}"
+#
