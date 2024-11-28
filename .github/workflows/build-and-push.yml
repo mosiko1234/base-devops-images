@@ -34,7 +34,6 @@ jobs:
             -t ${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
             --push .
 
-  # Job 2: Generate Language Matrix
   generate-matrix:
     name: Generate Language Matrix
     runs-on: ubuntu-latest
@@ -43,7 +42,10 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-
+    
+      - name: Print Config File
+        run: cat config.yml
+    
       - name: Validate Config File
         run: |
           if [ ! -f "config.yml" ]; then
@@ -51,18 +53,22 @@ jobs:
             exit 1
           fi
           yq '.languages' config.yml || { echo "Invalid config.yml format"; exit 1; }
-
+    
+      - name: Debug YQ Output
+        run: |
+          yq -o=json '.languages | to_entries | map({"language": .key, "version": .value.versions[]})' config.yml
+    
       - name: Parse Config File
         id: create-matrix
         run: |
-          MATRIX=$(yq -o=json '.languages | to_entries | map(.key as $lang | .value.versions | map({"language": $lang, "version": .})) | flatten' config.yml)
+          MATRIX=$(yq -o=json '.languages | to_entries | map({"language": .key, "version": .value.versions[]})' config.yml)
           echo "Generated Matrix: $MATRIX"
           if [ -z "$MATRIX" ] || [ "$MATRIX" == "[]" ]; then
-            echo "Error: Generated matrix is empty."
+            echo "Error: Generated matrix is empty or invalid."
             exit 1
           fi
           echo "::set-output name=matrix::$MATRIX"
-
+    
       - name: Debug Generated Matrix
         run: |
           echo "Matrix JSON:"
