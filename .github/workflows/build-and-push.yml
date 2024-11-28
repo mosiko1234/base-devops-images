@@ -161,22 +161,78 @@ jobs:
           name: trivy-scan-report
           path: ./trivy-scan-report/
 
+      - name: Prepare Slack Notification Data
+        id: slack-data
+        run: |
+          if [[ "${{ job.status }}" == "success" ]]; then
+            COLOR="good"
+            STATUS_TEXT=":white_check_mark: Build and Tests Completed Successfully"
+          else
+            COLOR="danger"
+            STATUS_TEXT=":x: Build or Tests Failed"
+          fi
+
+          BUILD_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          LINT_LOGS=$(ls ./lint-logs/ | wc -l)
+          TRIVY_REPORTS=$(ls ./trivy-scan-report/ | wc -l)
+
+          echo "SLACK_COLOR=$COLOR" >> $GITHUB_ENV
+          echo "SLACK_STATUS_TEXT=$STATUS_TEXT" >> $GITHUB_ENV
+          echo "SLACK_BUILD_URL=$BUILD_URL" >> $GITHUB_ENV
+          echo "SLACK_LINT_LOGS=$LINT_LOGS" >> $GITHUB_ENV
+          echo "SLACK_TRIVY_REPORTS=$TRIVY_REPORTS" >> $GITHUB_ENV
+
+      - name: Generate Slack Payload
+        run: |
+          cat <<EOF > slack-payload.json
+          {
+            "text": "${{ env.SLACK_STATUS_TEXT }}",
+            "attachments": [
+              {
+                "color": "${{ env.SLACK_COLOR }}",
+                "fields": [
+                  {
+                    "title": "Repository",
+                    "value": "${{ github.repository }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Branch",
+                    "value": "${{ github.ref_name }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Build Status",
+                    "value": "${{ job.status }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Lint Issues",
+                    "value": "Lint reports generated: ${{ env.SLACK_LINT_LOGS }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Security Scan Reports",
+                    "value": "Trivy reports generated: ${{ env.SLACK_TRIVY_REPORTS }}",
+                    "short": true
+                  }
+                ],
+                "footer": "GitHub Actions",
+                "footer_icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+                "ts": $(date +%s)
+              }
+            ]
+          }
+          EOF
+
+      - name: Debug Slack Payload
+        run: |
+          echo "Slack Payload:"
+          cat slack-payload.json
+
       - name: Send Slack Notification
         uses: slackapi/slack-github-action@v1.23.0
         with:
-          payload: >
-            {
-              "text": "Build Status: ${{ job.status }} for ${{ github.repository }}",
-              "attachments": [
-                {
-                  "title": "Build Details",
-                  "title_link": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-                  "fields": [
-                    {"title": "Branch", "value": "${{ github.ref_name }}", "short": true},
-                    {"title": "Status", "value": "${{ job.status }}", "short": true}
-                  ]
-                }
-              ]
-            }
+          payload-file-path: ./slack-payload.json
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
