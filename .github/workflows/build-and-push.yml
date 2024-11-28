@@ -175,7 +175,7 @@ jobs:
           echo "SLACK_BUILD_URL=$BUILD_URL" >> $GITHUB_ENV
           echo "SLACK_DURATION=$DURATION" >> $GITHUB_ENV
           echo "SLACK_TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
-  
+
       - name: Send Slack Notification
         uses: slackapi/slack-github-action@v1.23.0
         with:
@@ -185,7 +185,7 @@ jobs:
               "attachments": [
                 {
                   "color": "${{ env.SLACK_COLOR }}",
-                  "title": "Pipeline Summary for Build",
+                  "title": "Pipeline Summary",
                   "fields": [
                     {
                       "title": "Repository",
@@ -213,7 +213,7 @@ jobs:
                       "short": true
                     }
                   ],
-                  "text": "Pipeline completed successfully for the following images:\n- Python: 3.11, 3.12\n- Java: 11, 17",
+                  "text": "Pipeline completed for:\n- Python: 3.11, 3.12\n- Java: 11, 17",
                   "footer": "GitHub Actions",
                   "footer_icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
                   "ts": ${{ env.SLACK_TIMESTAMP }}
