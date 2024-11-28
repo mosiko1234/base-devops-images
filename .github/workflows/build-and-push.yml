@@ -234,10 +234,11 @@ jobs:
           echo "Slack Payload:"
           cat slack-payload.json
                 
-      - name: Send Slack Notification
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          payload-file-path: ./slack-payload.json
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      - name: Send Slack Notification with cURL
+        run: |
+          echo "Sending notification to Slack..."
+          curl -X POST -H 'Content-type: application/json' \
+          --data @slack-payload.json \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
+        
         
