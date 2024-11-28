@@ -29,11 +29,9 @@ jobs:
             --platform linux/amd64,linux/arm64 \
             --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
             --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/base-image:cache,mode=max \
-            --cache-to=type=local,dest=/tmp/.buildx-cache \
             -t ${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
-            -t ${{ secrets.DOCKERHUB_REPO }}/base-image:v1.0-$(date +%Y%m%d)-${{ github.sha }} \
-            -t ${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
             --push .
+
   # Job 2: Generate Language Matrix
   generate-matrix:
     name: Generate Language Matrix
@@ -44,27 +42,21 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Validate Config File
-        run: |
-          if [ ! -f "config.yml" ]; then
-            echo "Error: config.yml not found!"
-            exit 1
-          fi
-          yq '.languages' config.yml || { echo "Invalid config.yml format"; exit 1; }
-      - name: Parse Config File
+      - name: Parse Configuration
         id: create-matrix
         run: |
-          MATRIX=$(yq -o=json '.languages | to_entries | map({"language": .key, "version": .value.versions[], "build_args": .value.build_args})' config.yml)
+          MATRIX=$(jq -c '.languages | to_entries | map({"language": .key, "version": .value.versions[]})' languages.json)
           echo "Generated Matrix: $MATRIX"
           if [ -z "$MATRIX" ] || [ "$MATRIX" == "[]" ]; then
             echo "Error: Generated matrix is empty or invalid."
             exit 1
           fi
-          MATRIX_COMPACT=$(echo $MATRIX | jq -c '.')
-          echo "::set-output name=matrix::$MATRIX_COMPACT"
+          echo "::set-output name=matrix::$MATRIX"
+
       - name: Save Matrix to File
         run: |
           echo '${{ steps.create-matrix.outputs.matrix }}' > matrix.json
+
       - name: Upload Matrix as Artifact
         uses: actions/upload-artifact@v3
         with:
@@ -93,16 +85,14 @@ jobs:
             echo "Error: Dockerfile not found at ./${{ matrix.language }}-layer/Dockerfile.${{ matrix.language }}"
             exit 1
           fi
-      - name: List Files for Debugging
-        run: |
-          echo "Listing files in ./${{ matrix.language }}-layer:"
-          ls -la ./${{ matrix.language }}-layer
+
       - name: Lint Dockerfile with Hadolint
         run: |
           mkdir -p ./lint-logs
           docker pull hadolint/hadolint:latest
           docker run --rm -i hadolint/hadolint < ./${{ matrix.language }}-layer/Dockerfile.${{ matrix.language }} || echo "Lint issues found for Dockerfile.${{ matrix.language }}" >> ./lint-logs/${{ matrix.language }}.log
-      - name: Build Dynamic Language Image
+
+      - name: Build Image
         working-directory: ./${{ matrix.language }}-layer
         run: |
           docker buildx create --use
@@ -110,29 +100,30 @@ jobs:
             --platform linux/amd64,linux/arm64 \
             --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
             --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache,mode=max \
-            --cache-to=type=local,dest=/tmp/.buildx-cache \
             --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
             --build-arg JAVA_VERSION=${{ matrix.version }} \
             --build-arg PYTHON_VERSION=${{ matrix.version }} \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest \
-            -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:v${{ matrix.version }}-$(date +%Y%m%d)-${{ github.sha }} \
-            -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
-            -f Dockerfile.${{ matrix.language }} \
-            --push .
+            -o type=docker .
+
+      - name: Push Image
+        working-directory: ./${{ matrix.language }}-layer
+        if: success()
+        run: |
+          docker push ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest
+
+      - name: Test Image
+        working-directory: ./${{ matrix.language }}-layer
+        run: |
+          docker run --rm ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest --version || echo "Test failed!"
+
       - name: Upload Lint Logs
         uses: actions/upload-artifact@v3
         with:
           name: lint-logs
           path: ./lint-logs/
 
-      - name: Debug Build Logs
-        run: |
-          echo "Language: ${{ matrix.language }}"
-          echo "Version: ${{ matrix.version }}"
-
-
-
-  # Job 4: Security Scan and Notify (Enhanced Slack Notifications)
+# Job 4: Security Scan and Notify
   test-and-notify:
     name: Test and Notify
     needs: [build-language-images]
@@ -169,25 +160,20 @@ jobs:
           BUILD_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           LINT_LOGS=$(ls ./lint-logs/ | wc -l || echo "0")
           TRIVY_REPORTS=$(ls ./trivy-scan-report/ | wc -l || echo "0")
-          echo "SLACK_COLOR=$COLOR" >> $GITHUB_ENV
-          echo "SLACK_STATUS_TEXT=$STATUS_TEXT" >> $GITHUB_ENV
-          echo "SLACK_BUILD_URL=$BUILD_URL" >> $GITHUB_ENV
-          echo "SLACK_LINT_LOGS=$LINT_LOGS" >> $GITHUB_ENV
-          echo "SLACK_TRIVY_REPORTS=$TRIVY_REPORTS" >> $GITHUB_ENV
+          echo "::set-output name=color::$COLOR"
+          echo "::set-output name=status_text::$STATUS_TEXT"
+          echo "::set-output name=build_url::$BUILD_URL"
+          echo "::set-output name=lint_logs::$LINT_LOGS"
+          echo "::set-output name=trivy_reports::$TRIVY_REPORTS"
         
       - name: Generate Slack Payload
         run: |
-          if [[ "${{ job.status }}" == "success" ]]; then
-            STATUS_TEXT=":white_check_mark: Success"
-          else
-            STATUS_TEXT=":x: Failure"
-          fi
           cat <<EOF > slack-payload.json
           {
             "text": ":information_source: *Build and Test Results*",
             "attachments": [
               {
-                "color": "${{ env.SLACK_COLOR }}",
+                "color": "${{ steps.slack-data.outputs.color }}",
                 "fields": [
                   {
                     "title": "*Repository*",
@@ -201,44 +187,44 @@ jobs:
                   },
                   {
                     "title": "*Build Status*",
-                    "value": "${STATUS_TEXT}",
+                    "value": "${{ steps.slack-data.outputs.status_text }}",
                     "short": true
                   },
                   {
                     "title": "*Lint Logs*",
-                    "value": "${{ env.SLACK_LINT_LOGS }} logs generated",
+                    "value": "${{ steps.slack-data.outputs.lint_logs }} logs generated",
                     "short": true
                   },
                   {
                     "title": "*Trivy Scan Reports*",
-                    "value": "${{ env.SLACK_TRIVY_REPORTS }} reports generated",
+                    "value": "${{ steps.slack-data.outputs.trivy_reports }} reports generated",
                     "short": true
                   },
                   {
                     "title": "*Build URL*",
-                    "value": "<${{ env.SLACK_BUILD_URL }}|Click Here>",
+                    "value": "<${{ steps.slack-data.outputs.build_url }}|Click Here>",
                     "short": false
                   }
                 ],
-                "footer": "Workflow Run ID: ${{ github.run_id }} | Duration: ${{ steps.duration.outputs.total_time }} sec",
+                "footer": "Workflow Run ID: ${{ github.run_id }}",
                 "footer_icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
                 "ts": $(date +%s)
               }
             ]
           }
           EOF
-        
                 
-      - name: Debug Slack Payload
+      - name: Validate Slack Payload
         run: |
-          echo "Slack Payload:"
-          cat slack-payload.json
+          jq . slack-payload.json || { echo "Invalid JSON payload"; exit 1; }
                 
       - name: Send Slack Notification with cURL
         run: |
-          echo "Sending notification to Slack..."
           curl -X POST -H 'Content-type: application/json' \
           --data @slack-payload.json \
           ${{ secrets.SLACK_WEBHOOK_URL }}
-        
-        
+                
+      - name: Cleanup Temporary Files
+        run: |
+          rm -f slack-payload.json
+                
