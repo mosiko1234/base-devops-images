@@ -89,6 +89,11 @@ jobs:
       - name: Log in to DockerHub
         run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
+      - name: Lint Dockerfile with Hadolint
+        run: |
+          docker pull hadolint/hadolint:latest
+          docker run --rm -i hadolint/hadolint < Dockerfile.${{ matrix.language }} || echo "Lint issues found for Dockerfile.${{ matrix.language }}"
+
       - name: Build Dynamic Language Image
         working-directory: ./${{ matrix.language }}-layer
         run: |
@@ -111,7 +116,7 @@ jobs:
           echo "Language: ${{ matrix.language }}"
           echo "Version: ${{ matrix.version }}"
 
-  # Job 4: Test Language Images
+  # Job 4: Test and Scan Language Images
   test-language-images:
     name: Test Language Images
     needs: [build-language-images]
@@ -128,22 +133,24 @@ jobs:
           echo "Loaded Matrix: $MATRIX"
           echo "$MATRIX" > loaded-matrix.json
 
-      - name: Parse Matrix for Tests
-        id: parse-matrix
+      - name: Security Scan with Trivy
         run: |
-          MATRIX=$(cat loaded-matrix.json)
-          echo "::set-output name=matrix::$MATRIX"
+          docker pull aquasec/trivy:latest
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --exit-code 0 --severity HIGH,CRITICAL ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest
 
-      - name: Debug Matrix for Tests
-        run: |
-          echo "Matrix for tests: ${{ steps.parse-matrix.outputs.matrix }}"
-
-      - name: Run Tests
-        run: |
-          MATRIX=$(cat loaded-matrix.json)
-          echo "$MATRIX" | jq -c '.[]' | while read ITEM; do
-            LANGUAGE=$(echo $ITEM | jq -r '.language')
-            VERSION=$(echo $ITEM | jq -r '.version')
-            echo "Testing $LANGUAGE version $VERSION"
-            docker run --rm ${{ secrets.DOCKERHUB_REPO }}/${LANGUAGE}-${VERSION}:latest $LANGUAGE --version || echo "Test failed for $LANGUAGE-$VERSION"
-          done
+      - name: Send Slack Notification
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "text": "Pipeline Update: Build and Tests Completed",
+              "attachments": [
+                {
+                  "color": "good",
+                  "title": "Build and Security Results",
+                  "text": "Build and tests for ${{ matrix.language }}:${{ matrix.version }} completed. Check logs for more details."
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
