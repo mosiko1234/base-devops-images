@@ -78,7 +78,7 @@ jobs:
     needs: [build-base-image, generate-matrix]
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{ fromJson(env.MATRIX) }}
+      matrix: ${{ fromJson(env.MATRIX) }} 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
