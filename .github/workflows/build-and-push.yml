@@ -64,10 +64,6 @@ jobs:
           MATRIX_COMPACT=$(echo $MATRIX | jq -c '.')
           echo "::set-output name=matrix::$MATRIX_COMPACT"
 
-      - name: Save Matrix to File
-        run: |
-          echo "${{ steps.create-matrix.outputs.matrix }}" > matrix.json
-
       - name: Debug Generated Matrix
         run: |
           echo "Matrix JSON:"
@@ -80,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+        include: ${{ fromJson(needs.generate-matrix.outputs.matrix || '[]') }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -117,11 +113,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+        include: ${{ fromJson(needs.generate-matrix.outputs.matrix || '[]') }}
     steps:
       - name: Debug Matrix in Test Stage
         run: |
-          echo "Matrix for testing: ${{ needs.generate-matrix.outputs.matrix }}"
+          echo "Matrix for testing: '${{ needs.generate-matrix.outputs.matrix }}'"
 
       - name: Log in to DockerHub
         run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
