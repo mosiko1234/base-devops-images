@@ -35,7 +35,6 @@ jobs:
             --push .
 
   # Job 2: Generate Language Matrix
-  # Job 2: Generate Language Matrix
   generate-matrix:
     name: Generate Language Matrix
     runs-on: ubuntu-latest
@@ -67,14 +66,15 @@ jobs:
       - name: Save Matrix to Outputs
         id: save-matrix
         run: |
-          echo "matrix=$(cat matrix.json)" >> $GITHUB_ENV
+          echo "::set-output name=matrix::$(cat matrix.json)"
+
   # Job 3: Build Language Images
   build-language-images:
     name: Build Language Images
     needs: [build-base-image, generate-matrix]
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{ env.matrix }}
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -86,7 +86,7 @@ jobs:
         working-directory: ./${{ matrix.language }}-layer
         run: |
           docker buildx create --use
-          if docker buildx build \
+          docker buildx build \
             --platform linux/amd64,linux/arm64 \
             --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
             --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache,mode=max \
@@ -95,17 +95,13 @@ jobs:
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:v${{ matrix.version }}-$(date +%Y%m%d)-${{ github.sha }} \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
-            --push .; then
-            echo "Build successful"
-          else
-            echo "Build failed"
-            exit 1
-          fi
+            --push .
 
       - name: Debug Build Logs
         run: |
           echo "Language: ${{ matrix.language }}"
           echo "Version: ${{ matrix.version }}"
+
   # Job 4: Test Language Images
   test-language-images:
     name: Test Language Images
