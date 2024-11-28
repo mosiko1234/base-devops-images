@@ -185,35 +185,35 @@ jobs:
               "attachments": [
                 {
                   "color": "${{ env.SLACK_COLOR }}",
-                  "title": "Pipeline Summary",
+                  "title": ":clipboard: Pipeline Summary",
                   "fields": [
                     {
-                      "title": "Repository",
+                      "title": ":books: Repository",
                       "value": "${{ github.repository }}",
                       "short": true
                     },
                     {
-                      "title": "Branch",
+                      "title": ":evergreen_tree: Branch",
                       "value": "${{ github.ref_name }}",
                       "short": true
                     },
                     {
-                      "title": "Build Link",
+                      "title": ":link: Build Link",
                       "value": "<${{ env.SLACK_BUILD_URL }}|View Build Details>",
                       "short": false
                     },
                     {
-                      "title": "Build Status",
+                      "title": ":white_check_mark: Build Status",
                       "value": "${{ job.status }}",
                       "short": true
                     },
                     {
-                      "title": "Pipeline Duration",
+                      "title": ":hourglass_flowing_sand: Pipeline Duration",
                       "value": "${{ env.SLACK_DURATION }} seconds",
                       "short": true
                     }
                   ],
-                  "text": "Pipeline completed for:\n- Python: 3.11, 3.12\n- Java: 11, 17",
+                  "text": ":hammer_and_wrench: *Pipeline completed for the following images:*\n- *Python*: 3.11, 3.12\n- *Java*: 11, 17",
                   "footer": "GitHub Actions",
                   "footer_icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
                   "ts": ${{ env.SLACK_TIMESTAMP }}
