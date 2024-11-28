@@ -104,7 +104,7 @@ jobs:
             --build-arg JAVA_VERSION=${{ matrix.version }} \
             --build-arg PYTHON_VERSION=${{ matrix.version }} \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest \
-            -o type=docker .
+            --push .
 
       - name: Push Image
         working-directory: ./${{ matrix.language }}-layer
@@ -133,20 +133,20 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: matrix
-        
+
       - name: Security Scan with Trivy
         run: |
           mkdir -p ./trivy-scan-report
           docker pull aquasec/trivy:latest
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image \
             --exit-code 0 --severity HIGH,CRITICAL ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest > ./trivy-scan-report/${{ matrix.language }}.log || echo "Scan completed with findings."
-        
+
       - name: Upload Trivy Scan Report
         uses: actions/upload-artifact@v3
         with:
           name: trivy-scan-report
           path: ./trivy-scan-report/
-        
+
       - name: Prepare Slack Notification Data
         id: slack-data
         run: |
@@ -165,7 +165,7 @@ jobs:
           echo "::set-output name=build_url::$BUILD_URL"
           echo "::set-output name=lint_logs::$LINT_LOGS"
           echo "::set-output name=trivy_reports::$TRIVY_REPORTS"
-        
+
       - name: Generate Slack Payload
         run: |
           cat <<EOF > slack-payload.json
@@ -213,18 +213,17 @@ jobs:
             ]
           }
           EOF
-                
+
       - name: Validate Slack Payload
         run: |
           jq . slack-payload.json || { echo "Invalid JSON payload"; exit 1; }
-                
+
       - name: Send Slack Notification with cURL
         run: |
           curl -X POST -H 'Content-type: application/json' \
           --data @slack-payload.json \
           ${{ secrets.SLACK_WEBHOOK_URL }}
-                
+
       - name: Cleanup Temporary Files
         run: |
           rm -f slack-payload.json
-                
