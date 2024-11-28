@@ -102,9 +102,11 @@ jobs:
           ls -la ./${{ matrix.language }}-layer
 
       - name: Lint Dockerfile with Hadolint
+        continue-on-error: true
         run: |
+          mkdir -p ./lint-logs
           docker pull hadolint/hadolint:latest
-          docker run --rm -i hadolint/hadolint < ./${{ matrix.language }}-layer/Dockerfile.${{ matrix.language }} || echo "Lint issues found for Dockerfile.${{ matrix.language }}"
+          docker run --rm -i hadolint/hadolint < ./${{ matrix.language }}-layer/Dockerfile.${{ matrix.language }} || echo "Lint issues found for Dockerfile.${{ matrix.language }}" >> ./lint-logs/${{ matrix.language }}.log
 
       - name: Build Dynamic Language Image
         working-directory: ./${{ matrix.language }}-layer
@@ -122,6 +124,13 @@ jobs:
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
             -f Dockerfile.${{ matrix.language }} \
             --push .
+
+      - name: Upload Lint Logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: lint-logs
+          path: ./lint-logs/
 
       - name: Debug Build Logs
         run: |
@@ -146,14 +155,18 @@ jobs:
           echo "$MATRIX" > loaded-matrix.json
 
       - name: Security Scan with Trivy
+        continue-on-error: true
         run: |
-          echo "Scanning Image: ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest"
-          if ! docker inspect ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest > /dev/null 2>&1; then
-            echo "Image not found: ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest. Skipping scan."
-            exit 0
-          fi
+          mkdir -p ./trivy-scan-report
           docker pull aquasec/trivy:latest
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 0 --severity HIGH,CRITICAL ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 0 --severity HIGH,CRITICAL ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest > ./trivy-scan-report/${{ matrix.language }}.log || echo "Scan completed with findings."
+
+      - name: Upload Trivy Scan Report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: trivy-scan-report
+          path: ./trivy-scan-report/
 
       - name: Prepare Slack Notification Data
         id: slack-data
@@ -178,10 +191,9 @@ jobs:
 
       - name: Generate Slack Payload
         run: |
-          TIMESTAMP=${{ env.SLACK_TIMESTAMP }}
           cat <<EOF > slack-payload.json
           {
-            "text": ":white_check_mark: Build and Tests Completed Successfully\\n\\n<${{ env.SLACK_BUILD_URL }}|Click here to view build details>",
+            "text": "${{ env.SLACK_STATUS_TEXT }}\\n\\n<${{ env.SLACK_BUILD_URL }}|Click here to view build details>",
             "attachments": [
               {
                 "color": "${{ env.SLACK_COLOR }}",
@@ -198,7 +210,7 @@ jobs:
                   },
                   {
                     "title": "Build Status",
-                    "value": "success",
+                    "value": "${{ job.status }}",
                     "short": true
                   },
                   {
@@ -209,7 +221,7 @@ jobs:
                 ],
                 "footer": "GitHub Actions",
                 "footer_icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
-                "ts": ${TIMESTAMP}
+                "ts": $(( $(date +%s) ))
               }
             ]
           }
