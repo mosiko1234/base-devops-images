@@ -181,39 +181,37 @@ jobs:
         with:
           payload: |
             {
-              "text": "${{ env.SLACK_STATUS_TEXT }}",
+              "text": "${{ env.SLACK_STATUS_TEXT }}\n\n<${{ env.SLACK_BUILD_URL }}|Click here to view build details>",
               "attachments": [
                 {
                   "color": "${{ env.SLACK_COLOR }}",
-                  "title": ":clipboard: Pipeline Summary",
                   "fields": [
                     {
-                      "title": ":books: Repository",
+                      "title": "Repository",
                       "value": "${{ github.repository }}",
                       "short": true
                     },
                     {
-                      "title": ":evergreen_tree: Branch",
+                      "title": "Branch",
                       "value": "${{ github.ref_name }}",
                       "short": true
                     },
                     {
-                      "title": ":link: Build Link",
-                      "value": "<${{ env.SLACK_BUILD_URL }}|View Build Details>",
-                      "short": false
-                    },
-                    {
-                      "title": ":white_check_mark: Build Status",
+                      "title": "Build Status",
                       "value": "${{ job.status }}",
                       "short": true
                     },
                     {
-                      "title": ":hourglass_flowing_sand: Pipeline Duration",
+                      "title": "Pipeline Duration",
                       "value": "${{ env.SLACK_DURATION }} seconds",
                       "short": true
+                    },
+                    {
+                      "title": "Images",
+                      "value": "- Python: 3.11, 3.12\n- Java: 11, 17",
+                      "short": false
                     }
                   ],
-                  "text": ":hammer_and_wrench: *Pipeline completed for the following images:*\n- *Python*: 3.11, 3.12\n- *Java*: 11, 17",
                   "footer": "GitHub Actions",
                   "footer_icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
                   "ts": ${{ env.SLACK_TIMESTAMP }}
@@ -222,4 +220,3 @@ jobs:
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-  
