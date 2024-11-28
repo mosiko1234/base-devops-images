@@ -3,12 +3,11 @@ languages:
     versions:
       - 3.11
       - 3.12
-    dependencies:
-      - pip
-      - requests
+    build_args:
+      PYTHON_VERSION: "{{ version }}"
   java:
     versions:
       - 11
       - 17
-    dependencies:
-      - gradle
+    build_args:
+      JAVA_VERSION: "{{ version }}"

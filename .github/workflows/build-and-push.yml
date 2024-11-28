@@ -56,7 +56,7 @@ jobs:
       - name: Parse Config File
         id: create-matrix
         run: |
-          MATRIX=$(yq -o=json '.languages | to_entries | map({"language": .key, "version": .value.versions[], "build_args": .value.build_args})' config.yml)
+          MATRIX=$(yq -o=json '.languages | to_entries | map({"language": .key, "version": .value.versions[], "build_args": (.value.build_args // {}) | to_entries | map("--build-arg \(.key)=\(.value | sub("{{ version }}"; .version))") | join(" ") })' config.yml)
           echo "Generated Matrix: $MATRIX"
           if [ -z "$MATRIX" ] || [ "$MATRIX" == "[]" ]; then
             echo "Error: Generated matrix is empty or invalid."
@@ -118,14 +118,13 @@ jobs:
             --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
             --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache,mode=max \
             --cache-to=type=local,dest=/tmp/.buildx-cache \
-            --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
-            --build-arg JAVA_VERSION=${{ matrix.version }} \
-            --build-arg PYTHON_VERSION=${{ matrix.version }} \
+            ${{ matrix.build_args }} \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:v${{ matrix.version }}-$(date +%Y%m%d)-${{ github.sha }} \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
             -f Dockerfile.${{ matrix.language }} \
             --push .
+  
 
       - name: Upload Lint Logs
         uses: actions/upload-artifact@v3
