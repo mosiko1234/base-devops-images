@@ -239,6 +239,11 @@ jobs:
                     "short": true
                   },
                   {
+                  "title": "*Trivy Findings*",
+                  "value": "$(cat ./trivy-scan-report/${LANGUAGE}-${VERSION}.log | head -10)",
+                  "short": false
+                  },
+                  {
                     "title": "*Build URL*",
                     "value": "<${{ steps.slack-data.outputs.build_url }}|Click Here>",
                     "short": false
