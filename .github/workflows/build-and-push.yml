@@ -189,6 +189,22 @@ jobs:
           name: trivy-scan-report-${{ matrix.language }}-${{ matrix.version }}
           path: ./trivy-scan-report/
 
+      - name: Collect Built Images
+        id: collect-images
+        run: |
+          MATRIX=$(cat matrix.json)
+          IMAGES=""
+          echo $MATRIX | jq -c '.[]' | while read ITEM; do
+            LANGUAGE=$(echo $ITEM | jq -r '.language')
+            VERSION=$(echo $ITEM | jq -r '.version')
+            IMAGE_NAME="${{ secrets.DOCKERHUB_REPO }}/${LANGUAGE}-${VERSION}:latest"
+            DOCKER_HUB_URL="https://hub.docker.com/r/${{ secrets.DOCKERHUB_REPO }}/${LANGUAGE}-${VERSION}"
+            IMAGES="$IMAGES\n• <${DOCKER_HUB_URL}|${IMAGE_NAME}>"
+          done
+          echo "images=$IMAGES" >> $GITHUB_OUTPUT
+  
+
+
       - name: Prepare Slack Notification Data
         id: slack-data
         run: |
@@ -206,6 +222,9 @@ jobs:
 
       - name: Generate Slack Payload
         run: |
+          IMAGES_LIST="${{ steps.collect-images.outputs.images }}"
+          TRIVY_REPORT_COUNT=$(ls ./trivy-scan-report/*.log 2>/dev/null | wc -l || echo 0)
+      
           cat <<EOF > slack-payload.json
           {
             "text": ":information_source: *Build and Test Results*",
@@ -214,38 +233,33 @@ jobs:
                 "color": "${{ steps.slack-data.outputs.color }}",
                 "fields": [
                   {
-                    "title": "*Repository*",
+                    "title": "Repository",
                     "value": "<https://github.com/${{ github.repository }}|${{ github.repository }}>",
                     "short": true
                   },
                   {
-                    "title": "*Branch*",
+                    "title": "Branch",
                     "value": "${{ github.ref_name }}",
                     "short": true
                   },
                   {
-                    "title": "*Build Status*",
+                    "title": "Build Status",
                     "value": "${{ steps.slack-data.outputs.status_text }}",
                     "short": true
                   },
                   {
-                    "title": "*Lint Logs*",
-                    "value": "${{ steps.slack-data.outputs.lint_logs }} logs generated",
+                    "title": "Images Built",
+                    "value": "$IMAGES_LIST",
+                    "short": false
+                  },
+                  {
+                    "title": "Total Trivy Reports",
+                    "value": "$TRIVY_REPORT_COUNT reports generated",
                     "short": true
                   },
                   {
-                    "title": "*Trivy Scan Reports*",
-                    "value": "${{ steps.slack-data.outputs.trivy_reports }} reports generated",
-                    "short": true
-                  },
-                  {
-                  "title": "*Trivy Findings*",
-                  "value": "$(cat ./trivy-scan-report/${LANGUAGE}-${VERSION}.log | head -10)",
-                  "short": false
-                  },
-                  {
-                    "title": "*Build URL*",
-                    "value": "<${{ steps.slack-data.outputs.build_url }}|Click Here>",
+                    "title": "Workflow Run",
+                    "value": "<https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>",
                     "short": false
                   }
                 ],
@@ -256,6 +270,7 @@ jobs:
             ]
           }
           EOF
+  
 
       - name: Validate Slack Payload
         run: |
