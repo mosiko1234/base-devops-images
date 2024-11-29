@@ -110,12 +110,16 @@ jobs:
             --platform linux/amd64,linux/arm64 \
             --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
             --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache,mode=max \
+            --cache-to=type=local,dest=/tmp/.buildx-cache \
             --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
             --build-arg JAVA_VERSION=${{ matrix.version }} \
             --build-arg PYTHON_VERSION=${{ matrix.version }} \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest \
+            -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:v${{ matrix.version }}-$(date +%Y%m%d)-${{ github.sha }} \
+            -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
+            -f Dockerfile.${{ matrix.language }} \
             --push .
-
+            
       - name: Upload Lint Logs
         uses: actions/upload-artifact@v4
         with:
