@@ -146,6 +146,49 @@ jobs:
           fi
           cat matrix.json
 
+
+      - name: Debug and Iterate over Matrix
+        run: |
+          MATRIX=$(cat matrix.json)
+          echo "Processing matrix..."
+          echo $MATRIX | jq -c '.[]' | while read ITEM; do
+            LANGUAGE=$(echo $ITEM | jq -r '.language')
+            VERSION=$(echo $ITEM | jq -r '.version')
+            echo "Language: $LANGUAGE, Version: $VERSION"
+
+            # Example: Validate Image Name
+            IMAGE_NAME="${{ secrets.DOCKERHUB_REPO }}/${LANGUAGE}-${VERSION}:latest"
+            echo "Validating image name: $IMAGE_NAME"
+            if [[ ! $IMAGE_NAME =~ ^[a-zA-Z0-9./_-]+:[a-zA-Z0-9._-]+$ ]]; then
+              echo "Invalid image name format: $IMAGE_NAME"
+              exit 1
+            fi
+
+            # Example: Pull Image
+            echo "Pulling image: $IMAGE_NAME"
+            docker pull $IMAGE_NAME || echo "Image not found: $IMAGE_NAME"
+
+            # Example: Run Trivy Scan
+            mkdir -p ./trivy-scan-report
+            docker pull aquasec/trivy:latest
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image \
+              --exit-code 0 --severity HIGH,CRITICAL $IMAGE_NAME > ./trivy-scan-report/${LANGUAGE}-${VERSION}.log || echo "Scan completed with findings."
+
+            # Verify Trivy Log
+            if [ ! -s ./trivy-scan-report/${LANGUAGE}-${VERSION}.log ]; then
+              echo "Trivy log is empty or invalid for image: $IMAGE_NAME"
+              exit 1
+            fi
+          done
+  
+
+  
+      - name: Upload Trivy Scan Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-scan-report-${{ matrix.language }}-${{ matrix.version }}
+          path: ./trivy-scan-report/
+
       - name: Collect Built Images
         id: collect-images
         run: |
@@ -159,6 +202,8 @@ jobs:
             IMAGES="$IMAGES\n• <${DOCKER_HUB_URL}|${IMAGE_NAME}>"
           done
           echo "images=$IMAGES" >> $GITHUB_OUTPUT
+  
+
 
       - name: Prepare Slack Notification Data
         id: slack-data
@@ -225,6 +270,7 @@ jobs:
             ]
           }
           EOF
+  
 
       - name: Validate Slack Payload
         run: |
