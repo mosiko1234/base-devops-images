@@ -29,10 +29,8 @@ jobs:
             --platform linux/amd64,linux/arm64 \
             --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
             --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/base-image:cache,mode=max \
-            --cache-to=type=local,dest=/tmp/.buildx-cache \
             -t ${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
             -t ${{ secrets.DOCKERHUB_REPO }}/base-image:v1.0-$(date +%Y%m%d)-${{ github.sha }} \
-            -t ${{ secrets.DOCKERHUB_REPO }}/base-image:cache \
             --push .
 
   # Job 2: Generate Language Matrix
@@ -112,12 +110,10 @@ jobs:
             --platform linux/amd64,linux/arm64 \
             --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
             --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache,mode=max \
-            --cache-to=type=local,dest=/tmp/.buildx-cache \
             --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
             --build-arg JAVA_VERSION=${{ matrix.version }} \
             --build-arg PYTHON_VERSION=${{ matrix.version }} \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest \
-            -f Dockerfile.${{ matrix.language }} \
             --push .
 
       - name: Upload Lint Logs
@@ -126,31 +122,39 @@ jobs:
           name: lint-logs-${{ matrix.language }}-${{ matrix.version }}
           path: ./lint-logs/
           if-no-files-found: warn
-    
 
-# Job 4: Security Scan and Notify
+  # Job 4: Security Scan and Notify
   test-and-notify:
     name: Test and Notify
     needs: [build-language-images]
     runs-on: ubuntu-latest
     steps:
       - name: Download Matrix Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: matrix
-        
+
+      - name: Verify Downloaded Matrix File
+        run: |
+          if [ ! -f matrix.json ]; then
+            echo "Error: matrix.json not found after download!"
+            exit 1
+          fi
+          cat matrix.json
+
       - name: Security Scan with Trivy
         run: |
           mkdir -p ./trivy-scan-report
           docker pull aquasec/trivy:latest
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image \
             --exit-code 0 --severity HIGH,CRITICAL ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest > ./trivy-scan-report/${{ matrix.language }}.log || echo "Scan completed with findings."
+
       - name: Upload Trivy Scan Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: trivy-scan-report
+          name: trivy-scan-report-${{ matrix.language }}-${{ matrix.version }}
           path: ./trivy-scan-report/
-        
+
       - name: Prepare Slack Notification Data
         id: slack-data
         run: |
@@ -162,13 +166,10 @@ jobs:
             STATUS_TEXT=":x: Build or Tests Failed"
           fi
           BUILD_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          LINT_LOGS=$(ls ./lint-logs/ | wc -l || echo "0")
-          TRIVY_REPORTS=$(ls ./trivy-scan-report/ | wc -l || echo "0")
-          echo "::set-output name=color::$COLOR"
-          echo "::set-output name=status_text::$STATUS_TEXT"
-          echo "::set-output name=build_url::$BUILD_URL"
-          echo "::set-output name=lint_logs::$LINT_LOGS"
-          echo "::set-output name=trivy_reports::$TRIVY_REPORTS"
+          echo "color=$COLOR" >> $GITHUB_OUTPUT
+          echo "status_text=$STATUS_TEXT" >> $GITHUB_OUTPUT
+          echo "build_url=$BUILD_URL" >> $GITHUB_OUTPUT
+
       - name: Generate Slack Payload
         run: |
           cat <<EOF > slack-payload.json
@@ -216,13 +217,17 @@ jobs:
             ]
           }
           EOF
+
       - name: Validate Slack Payload
         run: |
           jq . slack-payload.json || { echo "Invalid JSON payload"; exit 1; }
+
       - name: Send Slack Notification with cURL
         run: |
           curl -X POST -H 'Content-type: application/json' \
           --data @slack-payload.json \
           ${{ secrets.SLACK_WEBHOOK_URL }}
+
       - name: Cleanup Temporary Files
         run: |
+          rm -f slack-payload.json
