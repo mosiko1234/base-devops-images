@@ -70,7 +70,7 @@ jobs:
           echo '${{ steps.create-matrix.outputs.matrix }}' > matrix.json
 
       - name: Upload Matrix as Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: matrix
           path: matrix.json
@@ -121,7 +121,7 @@ jobs:
             --push .
 
       - name: Upload Lint Logs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: lint-logs
           path: ./lint-logs/
@@ -133,7 +133,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download Matrix Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: matrix
 
@@ -145,7 +145,7 @@ jobs:
             --exit-code 0 --severity HIGH,CRITICAL ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest > ./trivy-scan-report/${{ matrix.language }}.log || echo "Scan completed with findings."
 
       - name: Upload Trivy Scan Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: trivy-scan-report
           path: ./trivy-scan-report/
