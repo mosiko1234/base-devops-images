@@ -146,10 +146,6 @@ jobs:
           fi
           cat matrix.json
 
-      - name: Debug Image Name
-        run: |
-          echo "Image Name: ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest"
-          docker pull ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest
 
       - name: Debug and Iterate over Matrix
         run: |
