@@ -146,21 +146,26 @@ jobs:
           fi
           cat matrix.json
 
-      - name: Security Scan with Trivy
+      - name: Debug Image Name
+        run: |
+          echo "Image Name: ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest"
+          docker pull ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest
+
+      - name: Security Scan with Trivy (Debug)
         run: |
           mkdir -p ./trivy-scan-report
           docker pull aquasec/trivy:latest
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image \
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest --debug image \
             --exit-code 0 --severity HIGH,CRITICAL ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest > ./trivy-scan-report/${{ matrix.language }}.log || echo "Scan completed with findings."
 
       - name: Verify Trivy Logs
         run: |
-          if [ ! "$(ls -A ./trivy-scan-report)" ]; then
-            echo "No Trivy scan reports found!"
+          if [ ! -s ./trivy-scan-report/${{ matrix.language }}.log ]; then
+            echo "Trivy log is empty or invalid!"
             exit 1
           fi
-          ls -la ./trivy-scan-report
-
+          cat ./trivy-scan-report/${{ matrix.language }}.log
+  
       - name: Upload Trivy Scan Report
         uses: actions/upload-artifact@v4
         with:
