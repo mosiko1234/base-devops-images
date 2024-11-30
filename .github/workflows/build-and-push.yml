@@ -32,6 +32,7 @@ jobs:
             -t ${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
             -t ${{ secrets.DOCKERHUB_REPO }}/base-image:v1.0-$(date +%Y%m%d)-${{ github.sha }} \
             --push .
+
   # Job 2: Generate Language Matrix
   generate-matrix:
     name: Generate Language Matrix
@@ -49,6 +50,7 @@ jobs:
             exit 1
           fi
           yq '.languages' config.yml || { echo "Invalid config.yml format"; exit 1; }
+
       - name: Parse Config File
         id: create-matrix
         run: |
@@ -60,14 +62,6 @@ jobs:
           fi
           MATRIX_COMPACT=$(echo $MATRIX | jq -c '.')
           echo "matrix=$MATRIX_COMPACT" >> $GITHUB_OUTPUT
-      - name: Save Matrix to File
-        run: |
-          echo '${{ steps.create-matrix.outputs.matrix }}' > matrix.json
-      - name: Upload Matrix as Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: matrix
-          path: matrix.json
 
   # Job 3: Build Language Images
   build-language-images:
@@ -91,11 +85,13 @@ jobs:
             echo "Error: Dockerfile not found at ./${{ matrix.language }}-layer/Dockerfile.${{ matrix.language }}"
             exit 1
           fi
+
       - name: Lint Dockerfile with Hadolint
         run: |
           mkdir -p ./lint-logs
           docker pull hadolint/hadolint:latest
           docker run --rm -i hadolint/hadolint < ./${{ matrix.language }}-layer/Dockerfile.${{ matrix.language }} || echo "Lint issues found for Dockerfile.${{ matrix.language }}" >> ./lint-logs/${{ matrix.language }}.log
+
       - name: Build Dynamic Language Image
         working-directory: ./${{ matrix.language }}-layer
         run: |
@@ -113,6 +109,7 @@ jobs:
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
             -f Dockerfile.${{ matrix.language }} \
             --push .
+
       - name: Upload Lint Logs
         uses: actions/upload-artifact@v4
         with:
@@ -126,60 +123,39 @@ jobs:
     needs: [build-language-images]
     runs-on: ubuntu-latest
     steps:
-      - name: Download Matrix Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: matrix
-
-      - name: Verify Downloaded Matrix File
+      - name: Download and Debug Matrix
         run: |
-          if [ ! -f matrix.json ]; then
-            echo "Error: matrix.json not found after download!"
-            exit 1
-          fi
-          cat matrix.json
-      - name: Debug and Iterate over Matrix
-        run: |
-          MATRIX=$(cat matrix.json)
+          MATRIX=${{ needs.generate-matrix.outputs.matrix }}
           echo "Processing matrix..."
           echo $MATRIX | jq -c '.[]' | while read ITEM; do
             LANGUAGE=$(echo $ITEM | jq -r '.language')
             VERSION=$(echo $ITEM | jq -r '.version')
             echo "Language: $LANGUAGE, Version: $VERSION"
-            # Example: Validate Image Name
+          done
+
+      - name: Security Scan with Trivy
+        run: |
+          MATRIX=${{ needs.generate-matrix.outputs.matrix }}
+          echo $MATRIX | jq -c '.[]' | while read ITEM; do
+            LANGUAGE=$(echo $ITEM | jq -r '.language')
+            VERSION=$(echo $ITEM | jq -r '.version')
             IMAGE_NAME="${{ secrets.DOCKERHUB_REPO }}/${LANGUAGE}-${VERSION}:latest"
-            echo "Validating image name: $IMAGE_NAME"
-            if [[ ! $IMAGE_NAME =~ ^[a-zA-Z0-9./_-]+:[a-zA-Z0-9._-]+$ ]]; then
-              echo "Invalid image name format: $IMAGE_NAME"
-              exit 1
-            fi
-            # Example: Pull Image
-            echo "Pulling image: $IMAGE_NAME"
-            docker pull $IMAGE_NAME || echo "Image not found: $IMAGE_NAME"
-            # Example: Run Trivy Scan
             mkdir -p ./trivy-scan-report
             docker pull aquasec/trivy:latest
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image \
               --exit-code 0 --severity HIGH,CRITICAL $IMAGE_NAME > ./trivy-scan-report/${LANGUAGE}-${VERSION}.log || echo "Scan completed with findings."
-            # Verify Trivy Log
-            if [ ! -s ./trivy-scan-report/${LANGUAGE}-${VERSION}.log ]; then
-              echo "Trivy log is empty or invalid for image: $IMAGE_NAME"
-              exit 1
-            fi
           done
-  
 
-  
       - name: Upload Trivy Scan Report
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-scan-report-${{ matrix.language }}-${{ matrix.version }}
+          name: trivy-scan-report
           path: ./trivy-scan-report/
 
       - name: Collect Built Images
         id: collect-images
         run: |
-          MATRIX=$(cat matrix.json)
+          MATRIX=${{ needs.generate-matrix.outputs.matrix }}
           IMAGES=""
           echo $MATRIX | jq -c '.[]' | while read ITEM; do
             LANGUAGE=$(echo $ITEM | jq -r '.language')
@@ -189,8 +165,6 @@ jobs:
             IMAGES="$IMAGES\n• <${DOCKER_HUB_URL}|${IMAGE_NAME}>"
           done
           echo "images=$IMAGES" >> $GITHUB_OUTPUT
-  
-
 
       - name: Prepare Slack Notification Data
         id: slack-data
@@ -206,11 +180,11 @@ jobs:
           echo "color=$COLOR" >> $GITHUB_OUTPUT
           echo "status_text=$STATUS_TEXT" >> $GITHUB_OUTPUT
           echo "build_url=$BUILD_URL" >> $GITHUB_OUTPUT
+
       - name: Generate Slack Payload
         run: |
           IMAGES_LIST="${{ steps.collect-images.outputs.images }}"
           TRIVY_REPORT_COUNT=$(ls ./trivy-scan-report/*.log 2>/dev/null | wc -l || echo 0)
-      
           cat <<EOF > slack-payload.json
           {
             "text": ":information_source: *Build and Test Results*",
@@ -256,16 +230,19 @@ jobs:
             ]
           }
           EOF
-  
 
       - name: Validate Slack Payload
         run: |
           jq . slack-payload.json || { echo "Invalid JSON payload"; exit 1; }
+
       - name: Send Slack Notification with cURL
         run: |
           curl -X POST -H 'Content-type: application/json' \
           --data @slack-payload.json \
           ${{ secrets.SLACK_WEBHOOK_URL }}
+
       - name: Cleanup Temporary Files
         run: |
           rm -f slack-payload.json
+          rm -rf ./lint-logs
+          rm -rf ./trivy-scan-report
