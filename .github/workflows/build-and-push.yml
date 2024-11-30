@@ -131,35 +131,6 @@ jobs:
             exit 1
           fi
 
-      - name: Process and Debug MATRIX
-        run: |
-          MATRIX='${{ needs.generate-matrix.outputs.matrix }}'
-          echo "Processing matrix..."
-          echo $MATRIX | jq -c '.[]' | while read ITEM; do
-            LANGUAGE=$(echo $ITEM | jq -r '.language')
-            VERSION=$(echo $ITEM | jq -r '.version')
-            echo "Language: $LANGUAGE, Version: $VERSION"
-          done
-
-      - name: Security Scan with Trivy
-        run: |
-          MATRIX='${{ needs.generate-matrix.outputs.matrix }}'
-          echo $MATRIX | jq -c '.[]' | while read ITEM; do
-            LANGUAGE=$(echo $ITEM | jq -r '.language')
-            VERSION=$(echo $ITEM | jq -r '.version')
-            IMAGE_NAME="${{ secrets.DOCKERHUB_REPO }}/${LANGUAGE}-${VERSION}:latest"
-            mkdir -p ./trivy-scan-report
-            docker pull aquasec/trivy:latest
-            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image \
-              --exit-code 0 --severity HIGH,CRITICAL $IMAGE_NAME > ./trivy-scan-report/${LANGUAGE}-${VERSION}.log || echo "Scan completed with findings."
-          done
-
-      - name: Upload Trivy Scan Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-scan-report
-          path: ./trivy-scan-report/
-
       - name: Collect Built Images
         id: collect-images
         run: |
@@ -171,7 +142,6 @@ jobs:
             DOCKER_HUB_URL="https://hub.docker.com/r/***/${LANGUAGE}-${VERSION}"
             echo -e "• <${DOCKER_HUB_URL}|${IMAGE_NAME}>"
           done | tr '\n' '\\n')
-
           echo "images=$IMAGES" >> $GITHUB_OUTPUT
 
       - name: Prepare Slack Notification Data
@@ -192,6 +162,7 @@ jobs:
       - name: Generate Slack Payload
         run: |
           IMAGES_LIST="${{ steps.collect-images.outputs.images }}"
+          IMAGES_LIST=$(echo "$IMAGES_LIST" | sed 's/"/\\"/g')
           TRIVY_REPORT_COUNT=$(ls ./trivy-scan-report/*.log 2>/dev/null | wc -l || echo 0)
           cat <<EOF > slack-payload.json
           {
