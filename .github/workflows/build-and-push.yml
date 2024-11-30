@@ -164,14 +164,14 @@ jobs:
         id: collect-images
         run: |
           MATRIX='${{ needs.generate-matrix.outputs.matrix }}'
-          IMAGES=""
-          echo $MATRIX | jq -c '.[]' | while read ITEM; do
+          IMAGES=$(echo $MATRIX | jq -c '.[]' | while read ITEM; do
             LANGUAGE=$(echo $ITEM | jq -r '.language')
             VERSION=$(echo $ITEM | jq -r '.version')
-            IMAGE_NAME="${{ secrets.DOCKERHUB_REPO }}/${LANGUAGE}-${VERSION}:latest"
-            DOCKER_HUB_URL="https://hub.docker.com/r/${{ secrets.DOCKERHUB_REPO }}/${LANGUAGE}-${VERSION}"
-            IMAGES="$IMAGES\n• <${DOCKER_HUB_URL}|${IMAGE_NAME}>"
-          done
+            IMAGE_NAME="***/${LANGUAGE}-${VERSION}:latest"
+            DOCKER_HUB_URL="https://hub.docker.com/r/***/${LANGUAGE}-${VERSION}"
+            echo -e "• <${DOCKER_HUB_URL}|${IMAGE_NAME}>"
+          done | tr '\n' '\\n')
+
           echo "images=$IMAGES" >> $GITHUB_OUTPUT
 
       - name: Prepare Slack Notification Data
