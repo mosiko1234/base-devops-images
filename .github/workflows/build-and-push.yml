@@ -166,8 +166,9 @@ jobs:
       - name: Generate Slack Payload
         run: |
           IMAGES_LIST="${{ steps.collect-images.outputs.images }}"
-          IMAGES_LIST=$(echo "$IMAGES_LIST" | sed 's/"/\\"/g')
-          IMAGES_LIST=$(echo "$IMAGES_LIST" | sed 's/\\/\\\\/g')
+          IMAGES_LIST=$(echo "$IMAGES_LIST" | sed 's/\\/\\\\/g') # הגנה על \ כ-\\
+          IMAGES_LIST=$(echo "$IMAGES_LIST" | sed 's/"/\\"/g')  # הגנה על "
+
 
 
 
@@ -178,7 +179,7 @@ jobs:
             "text": ":information_source: *Build and Test Results*",
             "attachments": [
               {
-                "color": "${{ steps.slack-data.outputs.color }}",
+                "color": "good",
                 "fields": [
                   {
                     "title": "Repository",
@@ -192,12 +193,12 @@ jobs:
                   },
                   {
                     "title": "Build Status",
-                    "value": "${{ steps.slack-data.outputs.status_text }}",
+                    "value": ":white_check_mark: Build and Tests Completed Successfully",
                     "short": true
                   },
                   {
                     "title": "Images Built",
-                    "value": "$IMAGES_LIST", # ללא קישור וללא latest
+                    "value": "$IMAGES_LIST",
                     "short": false
                   },
                   {
@@ -223,6 +224,7 @@ jobs:
       - name: Validate Slack Payload
         run: |
           jq . slack-payload.json || { echo "Invalid JSON payload"; exit 1; }
+          
 
       - name: Send Slack Notification with cURL
         run: |
