@@ -135,14 +135,18 @@ jobs:
         id: collect-images
         run: |
           MATRIX='${{ needs.generate-matrix.outputs.matrix }}'
-          IMAGES=$(echo $MATRIX | jq -c '.[]' | while read ITEM; do
-            LANGUAGE=$(echo $ITEM | jq -r '.language')
-            VERSION=$(echo $ITEM | jq -r '.version')
+          IMAGES=""
+          while read -r ITEM; do
+            LANGUAGE=$(echo "$ITEM" | jq -r '.language')
+            VERSION=$(echo "$ITEM" | jq -r '.version')
             IMAGE_NAME="***/${LANGUAGE}-${VERSION}:latest"
             DOCKER_HUB_URL="https://hub.docker.com/r/***/${LANGUAGE}-${VERSION}"
-            echo -e "• <${DOCKER_HUB_URL}|${IMAGE_NAME}>"
-          done | tr '\n' '\\n')
+            IMAGES="${IMAGES}• <${DOCKER_HUB_URL}|${IMAGE_NAME}>\n"
+          done <<< "$(echo $MATRIX | jq -c '.[]')"
+
+          IMAGES=$(echo -e "$IMAGES" | tr '\n' '\\n')
           echo "images=$IMAGES" >> $GITHUB_OUTPUT
+
 
       - name: Prepare Slack Notification Data
         id: slack-data
@@ -161,8 +165,10 @@ jobs:
 
       - name: Generate Slack Payload
         run: |
-          IMAGES_LIST=$(echo "$IMAGES_LIST" | sed 's/"/\\"/g') # הגנה על תווי "
-          IMAGES_LIST=$(echo "$IMAGES_LIST" | sed 's/\\/\\\\/g') # הגנה נוספת על תווי \
+          IMAGES_LIST="${{ steps.collect-images.outputs.images }}"
+          IMAGES_LIST=$(echo "$IMAGES_LIST" | sed 's/"/\\"/g')
+          IMAGES_LIST=$(echo "$IMAGES_LIST" | sed 's/\\/\\\\/g')
+
 
 
           TRIVY_REPORT_COUNT=$(ls ./trivy-scan-report/*.log 2>/dev/null | wc -l || echo 0)
@@ -172,7 +178,7 @@ jobs:
             "text": ":information_source: *Build and Test Results*",
             "attachments": [
               {
-                "color": "${{ steps.slack-data.outputs.color }}",
+                "color": "good",
                 "fields": [
                   {
                     "title": "Repository",
