@@ -139,13 +139,13 @@ jobs:
           while read -r ITEM; do
             LANGUAGE=$(echo "$ITEM" | jq -r '.language')
             VERSION=$(echo "$ITEM" | jq -r '.version')
-            IMAGE_NAME="***/${LANGUAGE}-${VERSION}:latest"
-            DOCKER_HUB_URL="https://hub.docker.com/r/***/${LANGUAGE}-${VERSION}"
-            IMAGES="${IMAGES}• <${DOCKER_HUB_URL}|${IMAGE_NAME}>\n"
+            IMAGE_NAME="${LANGUAGE}-${VERSION}" # שם האימג' בלבד
+            IMAGES="${IMAGES}• ${IMAGE_NAME}\n"
           done <<< "$(echo $MATRIX | jq -c '.[]')"
 
-          IMAGES=$(echo -e "$IMAGES" | tr '\n' '\\n')
+          IMAGES=$(echo -e "$IMAGES" | tr '\n' '\\n') # המרה לפורמט Slack תקין
           echo "images=$IMAGES" >> $GITHUB_OUTPUT
+
 
 
       - name: Prepare Slack Notification Data
@@ -178,7 +178,7 @@ jobs:
             "text": ":information_source: *Build and Test Results*",
             "attachments": [
               {
-                "color": "good",
+                "color": "${{ steps.slack-data.outputs.color }}",
                 "fields": [
                   {
                     "title": "Repository",
@@ -197,7 +197,7 @@ jobs:
                   },
                   {
                     "title": "Images Built",
-                    "value": "$IMAGES_LIST",
+                    "value": "$IMAGES_LIST", # ללא קישור וללא latest
                     "short": false
                   },
                   {
@@ -218,6 +218,7 @@ jobs:
             ]
           }
           EOF
+
 
       - name: Validate Slack Payload
         run: |
