@@ -120,12 +120,20 @@ jobs:
   # Job 4: Security Scan and Notify
   test-and-notify:
     name: Test and Notify
-    needs: [build-language-images]
+    needs: [generate-matrix, build-language-images]
     runs-on: ubuntu-latest
     steps:
-      - name: Download and Debug Matrix
+      - name: Validate MATRIX
         run: |
-          MATRIX=${{ needs.generate-matrix.outputs.matrix }}
+          MATRIX='${{ needs.generate-matrix.outputs.matrix }}'
+          if [ -z "$MATRIX" ]; then
+            echo "Error: MATRIX is empty!"
+            exit 1
+          fi
+
+      - name: Process and Debug MATRIX
+        run: |
+          MATRIX='${{ needs.generate-matrix.outputs.matrix }}'
           echo "Processing matrix..."
           echo $MATRIX | jq -c '.[]' | while read ITEM; do
             LANGUAGE=$(echo $ITEM | jq -r '.language')
@@ -135,7 +143,7 @@ jobs:
 
       - name: Security Scan with Trivy
         run: |
-          MATRIX=${{ needs.generate-matrix.outputs.matrix }}
+          MATRIX='${{ needs.generate-matrix.outputs.matrix }}'
           echo $MATRIX | jq -c '.[]' | while read ITEM; do
             LANGUAGE=$(echo $ITEM | jq -r '.language')
             VERSION=$(echo $ITEM | jq -r '.version')
@@ -155,7 +163,7 @@ jobs:
       - name: Collect Built Images
         id: collect-images
         run: |
-          MATRIX=${{ needs.generate-matrix.outputs.matrix }}
+          MATRIX='${{ needs.generate-matrix.outputs.matrix }}'
           IMAGES=""
           echo $MATRIX | jq -c '.[]' | while read ITEM; do
             LANGUAGE=$(echo $ITEM | jq -r '.language')
