@@ -54,7 +54,7 @@ jobs:
       - name: Parse Config File
         id: create-matrix
         run: |
-          MATRIX=$(yq -o=json '.languages | to_entries | map({"language": .key, "version": .value.versions[], "build_args": (.value.build_args // {})})' config.yml)
+          MATRIX=$(yq -o=json '.languages | to_entries | map({"language": .key, "version": .value.versions[], "build_args": (.value.build_args // {} | to_entries | map("--build-arg " + .key + "=" + .value) | join(" "))})' config.yml)
           echo "Generated Matrix: $MATRIX"
           echo "matrix=$(echo $MATRIX | jq -c '.')" >> $GITHUB_OUTPUT
 
@@ -100,14 +100,14 @@ jobs:
             --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
             --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache,mode=max \
             --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
-            ${{ matrix.build_args | join(" ") }} \
+            ${{ matrix.build_args }} \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:v${{ matrix.version }}-$(date +%Y%m%d)-${{ github.sha }} \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
             -f Dockerfile.${{ matrix.language }} \
             --push .
 
-  # Job 4: Security Scan and Notify
+  # Job 4: Test and Notify
   test-and-notify:
     name: Test and Notify
     needs: [build-language-images]
@@ -118,25 +118,12 @@ jobs:
         with:
           name: matrix
 
-      - name: Process Matrix for Notification
-        id: notify-images
-        run: |
-          MATRIX=$(cat matrix.json)
-          IMAGES=""
-          echo $MATRIX | jq -c '.[]' | while read ITEM; do
-            LANGUAGE=$(echo $ITEM | jq -r '.language')
-            VERSION=$(echo $ITEM | jq -r '.version')
-            IMAGE_NAME="${{ secrets.DOCKERHUB_REPO }}/${LANGUAGE}-${VERSION}:latest"
-            IMAGES="$IMAGES\n- $IMAGE_NAME"
-          done
-          echo "images=$IMAGES" >> $GITHUB_OUTPUT
-
       - name: Send Slack Notification
         uses: slackapi/slack-github-action@v1.23.0
         with:
           payload: |
             {
-              "text": ":information_source: Build and Test Results",
+              "text": "Build and Test Results",
               "attachments": [
                 {
                   "color": "good",
@@ -150,11 +137,6 @@ jobs:
                       "title": "Branch",
                       "value": "${{ github.ref_name }}",
                       "short": true
-                    },
-                    {
-                      "title": "Built Images",
-                      "value": "${{ steps.notify-images.outputs.images }}",
-                      "short": false
                     }
                   ]
                 }
