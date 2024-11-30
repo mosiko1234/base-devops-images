@@ -161,11 +161,12 @@ jobs:
 
       - name: Generate Slack Payload
         run: |
-          IMAGES_LIST="${{ steps.collect-images.outputs.images }}"
-          IMAGES_LIST=$(echo "$IMAGES_LIST" | sed 's/"/\\"/g') # הגנה על מחרוזות
-              
+          IMAGES_LIST=$(echo "$IMAGES_LIST" | sed 's/"/\\"/g') # הגנה על תווי "
+          IMAGES_LIST=$(echo "$IMAGES_LIST" | sed 's/\\/\\\\/g') # הגנה נוספת על תווי \
+
+
           TRIVY_REPORT_COUNT=$(ls ./trivy-scan-report/*.log 2>/dev/null | wc -l || echo 0)
-              
+
           cat <<EOF > slack-payload.json
           {
             "text": ":information_source: *Build and Test Results*",
