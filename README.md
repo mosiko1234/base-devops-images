@@ -1,170 +1,192 @@
 
-# Docker Multi-Language Images Pipeline base-devops-images
+# Base DevOps Images
 
-This repository contains a robust pipeline for building, testing, and pushing Docker images tailored for different programming environments. The project is designed to streamline the process of maintaining base images and language-specific images for Python and Java while ensuring high-quality builds and optimal performance.
+**Maintainer**: [Moshe Eliya](https://github.com/mosiko1234)  
+**Repository**: [mosiko1234/base-devops-images](https://github.com/mosiko1234/base-devops-images)
 
----
+## Overview
+
+This repository provides an automated pipeline for building, testing, and deploying Docker images for various programming languages. The pipeline supports dynamic versioning and integrates security scans and notifications for a seamless DevOps experience.
 
 ## Features
 
-1. **Base Image:**
-   - A common foundational image with essential tools for DevOps operations.
-   - Includes AWS CLI, Helm, ArgoCD CLI, GitLab Runner, and other utilities.
-
-2. **Python Images:**
-   - Dynamically builds Python images for multiple versions (e.g., 3.11, 3.12).
-   - Leverages `deadsnakes` PPA for the latest Python versions.
-   - Includes `pip`, `venv`, and all necessary dependencies.
-
-3. **Java Images:**
-   - Builds Java images for multiple versions (e.g., 11, 17).
-   - Uses OpenJDK for compatibility and consistency.
-   - Configurable for specific Java runtime needs.
-
-4. **Linting:**
-   - Uses `hadolint` to ensure Dockerfiles follow best practices.
-   - Can be customized or extended for stricter compliance.
-
-5. **Multi-Platform Builds:**
-   - Supports `linux/amd64` and `linux/arm64` architectures using Docker Buildx.
-
-6. **CI/CD Pipeline:**
-   - Automatically triggered on `main` branch pushes.
-   - Efficient caching with `--cache-from` and `--cache-to` for faster builds.
-   - Matrix strategy to handle multiple versions of Python and Java concurrently.
+- **Base Image**: A foundational image with essential tools for DevOps (e.g., AWS CLI, yq, Helm, OpenShift CLI, ArgoCD CLI).
+- **Dynamic Language Layers**: Builds language-specific Docker images for Java and Python with configurable versions.
+- **Automated CI/CD**: Leveraging GitHub Actions to handle the entire process from build to deployment.
+- **Security Scanning**: Trivy scans to ensure image safety.
+- **Slack Notifications**: Sends detailed build summaries.
 
 ---
 
-## Repository Structure
+## Project Structure
 
 ```plaintext
 .
-├── base-image/
-│   ├── Dockerfile          # Defines the base image with essential tools.
-├── python-layer/
-│   ├── Dockerfile          # Builds Python-specific images.
-├── java-layer/
-│   ├── Dockerfile          # Builds Java-specific images.
-├── .github/workflows/
-│   ├── build-pipeline.yml  # The CI/CD pipeline for building and pushing images.
-└── README.md               # Project documentation.
+├── LICENSE                   # License file for the repository
+├── README.md                 # Project documentation
+├── base-image
+│   └── Dockerfile            # Base image definition
+├── config.yml                # Configuration file for language versions
+├── java-layer
+│   └── Dockerfile.java       # Dockerfile for Java images
+├── python-layer
+│   └── Dockerfile.python     # Dockerfile for Python images
 ```
 
 ---
 
-## Prerequisites
+## Getting Started
 
-- **Docker:** Ensure Docker and Docker Buildx are installed and configured.
-- **GitHub Actions Secrets:**
-  - `DOCKERHUB_USERNAME`: Your DockerHub username.
-  - `DOCKERHUB_PASSWORD`: Your DockerHub password.
-  - `DOCKERHUB_REPO`: The target DockerHub repository.
+### Prerequisites
+
+1. **DockerHub Account**:
+   - Add the following secrets to your GitHub repository:
+     - `DOCKERHUB_USERNAME`
+     - `DOCKERHUB_PASSWORD`
+
+2. **Slack Webhook**:
+   - Add the `SLACK_WEBHOOK_URL` secret to enable Slack notifications.
+
+### Configuration
+
+Edit the `config.yml` file to define the languages and versions to build:
+
+```yaml
+languages:
+  python:
+    versions:
+      - 3.11
+      - 3.12
+  java:
+    versions:
+      - 11
+      - 17
+```
+
+### Pipeline Workflow
+
+The GitHub Actions pipeline is triggered by pushes to the `config-dev` branch. The workflow includes:
+
+1. **Base Image Build**:
+   - Creates a shared base image with pre-installed DevOps tools.
+2. **Dynamic Matrix Generation**:
+   - Parses `config.yml` to generate build tasks dynamically.
+3. **Language-Specific Builds**:
+   - Builds Docker images for each language/version combination.
+4. **Security Scanning**:
+   - Trivy scans all images for vulnerabilities.
+5. **Notifications**:
+   - Sends Slack messages with build and test summaries.
 
 ---
 
-## Pipeline Workflow
+## Docker Images
 
-### Steps Overview
+### Base Image
 
-1. **Build and Push Base Image:**
-   - Builds a reusable base image with essential tools.
-   - Pushes the image to DockerHub with `latest` and versioned tags.
+The base image is defined in `base-image/Dockerfile` and includes:
+- Lightweight Ubuntu 20.04.
+- DevOps tools like AWS CLI, Helm, OpenShift CLI, and more.
 
-2. **Build and Push Python Images:**
-   - Iterates over Python versions using a matrix strategy.
-   - Builds and pushes versioned Python images (e.g., `python-3.11`).
+### Java Layer
 
-3. **Build and Push Java Images:**
-   - Iterates over Java versions using a matrix strategy.
-   - Builds and pushes versioned Java images (e.g., `java-11`).
+- Dockerfile: `java-layer/Dockerfile.java`
+- Dynamically installs OpenJDK versions.
+- Example versions: 11, 17.
 
-4. **Linting (Optional):**
-   - Ensures Dockerfiles comply with best practices using `hadolint`.
+### Python Layer
+
+- Dockerfile: `python-layer/Dockerfile.python`
+- Dynamically installs Python versions.
+- Example versions: 3.11, 3.12.
+
+---
+
+## Outputs
+
+### Artifacts
+
+- **Trivy Scan Reports**:
+  - Uploaded to GitHub as workflow artifacts.
+  - Stored in the `./trivy-scan-report` directory during runtime.
+
+### Slack Notifications
+
+Slack notifications include:
+- Repository details.
+- Build status.
+- List of built images.
+- Security scan summary.
+
+Example notification:
+
+```
+:information_source: *Build and Test Results*
+Repository: mosiko1234/base-devops-images
+Branch: config-dev
+Build Status: :white_check_mark: Build and Tests Completed Successfully
+Images Built:
+• python-3.11
+• python-3.12
+• java-11
+• java-17
+Total Trivy Reports: 4 reports generated
+Workflow Run: View Details
+```
 
 ---
 
 ## How to Use
 
-1. **Clone the Repository:**
-   ```bash
-   git clone https://github.com/mosiko1234/base-devops-images.git
-   cd base-devops-images
-   ```
+### Clone the Repository
 
-2. **Configure GitHub Actions:**
-   - Add DockerHub credentials (`DOCKERHUB_USERNAME`, `DOCKERHUB_PASSWORD`, `DOCKERHUB_REPO`) to GitHub Secrets.
-
-3. **Run the Pipeline:**
-   - Push changes to the `main` branch to trigger the CI/CD pipeline.
-
-4. **Verify Images:**
-   - Verify the pushed images on DockerHub:
-     - `base-image`
-     - `python-3.11`, `python-3.12`
-     - `java-11`, `java-17`
-
----
-
-## Example Commands
-
-### Test a Built Image Locally
 ```bash
-docker pull adafef2e596e/base-image:latest
-docker run --rm -it adafef2e596e/base-image:latest bash
+git clone https://github.com/mosiko1234/base-devops-images.git
+cd base-devops-images
 ```
 
-### Add a New Language Version
-1. Modify the matrix strategy in `.github/workflows/build-pipeline.yml`:
-   ```yaml
-   matrix:
-     python_version: [3.11, 3.12, 3.13]
-     java_version: [11, 17, 19]
-   ```
+### Modify Configuration
 
-2. Update the corresponding Dockerfiles if necessary.
+Update the `config.yml` file with the desired language versions.
+
+### Trigger the Workflow
+
+Push changes to the `config-dev` branch:
+
+```bash
+git add .
+git commit -m "Update config.yml"
+git push origin config-dev
+```
+
+The pipeline will automatically run and build the images.
 
 ---
 
 ## Contribution Guidelines
 
-1. Fork the repository and create a new branch.
-2. Make changes and test locally.
-3. Submit a pull request with a clear description of changes.
-
----
-
-## Known Issues & Troubleshooting
-
-1. **Linting Errors:**
-   - Use `hadolint` locally to debug and fix linting issues:
-     ```bash
-     docker run --rm -i hadolint/hadolint < ./base-image/Dockerfile
-     ```
-
-2. **Build Cache Errors:**
-   - Clear Docker cache if builds are inconsistent:
-     ```bash
-     docker builder prune --all
-     ```
-
-3. **QEMU Emulator Issues (ARM64):**
-   - Ensure QEMU is properly configured for multi-architecture builds:
-     ```bash
-     docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-     ```
-
----
-
-## Future Enhancements
-
-- Add Node.js images to support JavaScript applications.
-- Integrate security scanning tools like `trivy` for Docker images.
-- Automate semantic versioning for image tags.
+1. **Fork the Repository**.
+2. Create a new branch for your changes:
+   ```bash
+   git checkout -b feature-name
+   ```
+3. Commit your changes:
+   ```bash
+   git commit -m "Add feature-name"
+   ```
+4. Push to your forked repository and create a pull request.
 
 ---
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
 
 ---
+
+## Maintainer
+
+**Moshe Eliya**  
+GitHub: [mosiko1234](https://github.com/mosiko1234)
+
+For any issues or questions, feel free to open an issue in the repository.
