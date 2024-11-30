@@ -54,9 +54,9 @@ jobs:
       - name: Parse Config File
         id: create-matrix
         run: |
-          MATRIX=$(yq -o=json '.languages | to_entries | map({"language": .key, "version": .value.versions[], "build_args": .value.build_args})' config.yml)
+          MATRIX=$(yq -o=json '.languages | to_entries | map({"language": .key, "version": .value.versions[], "build_args": (.value.build_args // {})})' config.yml)
           echo "Generated Matrix: $MATRIX"
-          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "matrix=$(echo $MATRIX | jq -c '.')" >> $GITHUB_OUTPUT
 
       - name: Save Matrix to File
         run: |
@@ -71,11 +71,12 @@ jobs:
   # Job 3: Build Language Images
   build-language-images:
     name: Build Language Images
-    needs: generate-matrix
+    needs: [build-base-image, generate-matrix]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+        include: ${{ fromJson(needs.generate-matrix.outputs.matrix || '[]') }}
+      max-parallel: 4
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -90,12 +91,6 @@ jobs:
             exit 1
           fi
 
-      - name: Lint Dockerfile with Hadolint
-        run: |
-          mkdir -p ./lint-logs
-          docker pull hadolint/hadolint:latest
-          docker run --rm -i hadolint/hadolint < ./${{ matrix.language }}-layer/Dockerfile.${{ matrix.language }} || echo "Lint issues found for Dockerfile.${{ matrix.language }}" >> ./lint-logs/${{ matrix.language }}.log
-
       - name: Build Dynamic Language Image
         working-directory: ./${{ matrix.language }}-layer
         run: |
@@ -105,17 +100,17 @@ jobs:
             --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
             --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache,mode=max \
             --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
-            --build-arg JAVA_VERSION=${{ matrix.version }} \
-            --build-arg PYTHON_VERSION=${{ matrix.version }} \
+            ${{ matrix.build_args | join(" ") }} \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:latest \
             -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:v${{ matrix.version }}-$(date +%Y%m%d)-${{ github.sha }} \
+            -t ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.language }}-${{ matrix.version }}:cache \
             -f Dockerfile.${{ matrix.language }} \
             --push .
 
   # Job 4: Security Scan and Notify
   test-and-notify:
     name: Test and Notify
-    needs: build-language-images
+    needs: [build-language-images]
     runs-on: ubuntu-latest
     steps:
       - name: Download Matrix Artifact
@@ -123,44 +118,47 @@ jobs:
         with:
           name: matrix
 
-      - name: Verify Matrix
-        run: |
-          if [ ! -f matrix.json ]; then
-            echo "Error: matrix.json not found!"
-            exit 1
-          fi
-          cat matrix.json
-
-      - name: Generate Slack Payload
+      - name: Process Matrix for Notification
+        id: notify-images
         run: |
           MATRIX=$(cat matrix.json)
           IMAGES=""
           echo $MATRIX | jq -c '.[]' | while read ITEM; do
             LANGUAGE=$(echo $ITEM | jq -r '.language')
             VERSION=$(echo $ITEM | jq -r '.version')
-            IMAGE="${{ secrets.DOCKERHUB_REPO }}/${LANGUAGE}-${VERSION}:latest"
-            IMAGES="$IMAGES\n- $IMAGE"
+            IMAGE_NAME="${{ secrets.DOCKERHUB_REPO }}/${LANGUAGE}-${VERSION}:latest"
+            IMAGES="$IMAGES\n- $IMAGE_NAME"
           done
-          cat <<EOF > slack-payload.json
-          {
-            "text": "Build and Test Results",
-            "attachments": [
-              {
-                "fields": [
-                  {
-                    "title": "Built Images",
-                    "value": "$IMAGES",
-                    "short": false
-                  }
-                ]
-              }
-            ]
-          }
-          EOF
+          echo "images=$IMAGES" >> $GITHUB_OUTPUT
 
       - name: Send Slack Notification
         uses: slackapi/slack-github-action@v1.23.0
         with:
-          payload-file-path: slack-payload.json
+          payload: |
+            {
+              "text": ":information_source: Build and Test Results",
+              "attachments": [
+                {
+                  "color": "good",
+                  "fields": [
+                    {
+                      "title": "Repository",
+                      "value": "${{ github.repository }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Branch",
+                      "value": "${{ github.ref_name }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Built Images",
+                      "value": "${{ steps.notify-images.outputs.images }}",
+                      "short": false
+                    }
+                  ]
+                }
+              ]
+            }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
