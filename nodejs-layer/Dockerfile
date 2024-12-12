@@ -10,7 +10,7 @@ ARG nodejs_VERSION
 
 # Install Node.js and npm dynamically
 RUN apt-get update && \
-    curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - && \
+    curl -fsSL https://deb.nodesource.com/setup_${nodejs_VERSION}.x | bash - && \
     apt-get install -y --no-install-recommends \
         nodejs && \
     apt-get clean && \
