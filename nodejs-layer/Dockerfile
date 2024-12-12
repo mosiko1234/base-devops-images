@@ -6,7 +6,7 @@ FROM ${BASE_IMAGE}
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Accept Node.js version as an argument
-ARG NODE_VERSION
+ARG nodejs_VERSION
 
 # Install Node.js and npm dynamically
 RUN apt-get update && \
