@@ -100,6 +100,13 @@ The base image is defined in `base-image/Dockerfile` and includes:
 - Dynamically installs Python versions.
 - Example versions: 3.11, 3.12.
 
+### Node.js Images
+The Node.js images are built with support for the following versions:
+- Node.js 14
+- Node.js 16
+- Node.js 18
+
+
 ---
 
 ## Outputs
