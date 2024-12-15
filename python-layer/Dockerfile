@@ -28,7 +28,7 @@ RUN apt-get update && \
 # Add deadsnakes PPA for Python installation
 RUN add-apt-repository ppa:deadsnakes/ppa && apt-get update && \
     apt-get install -y --no-install-recommends \
-        python${PYTHON_VERSION} python${PYTHON_VERSION}-dev python${PYTHON_VERSION}-distutils && \
+        python${PYTHON_VERSION} python${PYTHON_VERSION}-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
