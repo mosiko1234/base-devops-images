@@ -205,6 +205,7 @@ jobs:
     - name: Build nodejs Image
       working-directory: ./nodejs-layer
       run: |
+        echo "Base Image: ${{ secrets.DOCKERHUB_REPO }}/base-image:latest"
         docker buildx create --use
         docker buildx build \
           --platform linux/amd64,linux/arm64 \
