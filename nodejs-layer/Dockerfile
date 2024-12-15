@@ -1,5 +1,6 @@
 # Use base image
 ARG BASE_IMAGE
+ENV BASE_IMAGE=${BASE_IMAGE}
 FROM ${BASE_IMAGE}
 
 # Set environment variables

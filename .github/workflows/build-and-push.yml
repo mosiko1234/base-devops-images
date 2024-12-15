@@ -212,9 +212,9 @@ jobs:
           --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.nodejs_version }}:cache,mode=max \
           --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
           --build-arg nodejs_VERSION=${{ matrix.nodejs_version }} \
-          -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.nodejs_version }}:latest \
-          -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.nodejs_version }}:v${{ matrix.nodejs_version }}-$(date +%Y%m%d)-${{ github.sha }} \
-          -t ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.nodejs_version }}:cache \
+          -t ${{ secrets.DOCKERHUB_REPO }}/nodejs-${{ matrix.nodejs_version }}:latest \
+          -t ${{ secrets.DOCKERHUB_REPO }}/nodejs-${{ matrix.nodejs_version }}:v${{ matrix.nodejs_version }}-$(date +%Y%m%d)-${{ github.sha }} \
+          -t ${{ secrets.DOCKERHUB_REPO }}/nodejs-${{ matrix.nodejs_version }}:cache \
           --push .
 
   test-nodejs-images:
