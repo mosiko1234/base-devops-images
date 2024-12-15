@@ -16,6 +16,7 @@ RUN apt-get update \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
+        libxml2-utils \
         libc6 \
         libc6-dev \
         libc-bin \
