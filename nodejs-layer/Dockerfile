@@ -2,7 +2,7 @@ ARG BASE_IMAGE=adafef2e596e/base-image:latest
 FROM ${BASE_IMAGE}
 
 # Accept Node.js version as build argument
-ARG NODEJS_VERSION
+ARG nodejs_VERSION
 
 # Set environment variables
 ENV NODE_ENV=production \
@@ -13,17 +13,18 @@ ENV NODE_ENV=production \
 USER root
 
 # Install Node.js and npm
-# Install Node.js and npm dynamically
 RUN apt-get update && \
     curl -fsSL https://deb.nodesource.com/setup_${nodejs_VERSION}.x | bash - && \
     apt-get install -y --no-install-recommends \
         nodejs && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* \
-    # Verify installations
-    && echo "Node version: $(node --version)" \
-    && echo "NPM version: $(npm --version)" \
-    && echo "Yarn version: $(yarn --version)"
+    rm -rf /var/lib/apt/lists/*
+
+# Verify installations
+RUN set -e && \
+    node --version && \
+    npm --version && \
+    if command -v yarn >/dev/null 2>&1; then yarn --version; else echo "Yarn not installed"; fi
 
 # Create app directory and set permissions
 RUN mkdir -p /app \
@@ -38,7 +39,7 @@ WORKDIR /app
 USER devops
 
 # Verify installation as non-root user
-RUN node --version && npm --version && yarn --version
+RUN set -e && node --version && npm --version && if command -v yarn >/dev/null 2>&1; then yarn --version; else echo "Yarn not installed"; fi
 
 # Add healthcheck
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
