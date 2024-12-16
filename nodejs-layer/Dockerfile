@@ -1,12 +1,6 @@
 ARG BASE_IMAGE=adafef2e596e/base-image:latest
 FROM ${BASE_IMAGE}
 
-# Accept Node.js version as build argument with default
-ARG nodejs_VERSION
-
-ARG BASE_IMAGE=adafef2e596e/base-image:latest
-FROM ${BASE_IMAGE}
-
 # Accept Node.js version as build argument
 ARG nodejs_VERSION
 
@@ -27,13 +21,15 @@ RUN set -ex \
         *) echo "unsupported architecture ${dpkgArch}"; exit 1;; \
     esac \
     # Install Node.js with verification
-    && curl -fsSLO --compressed "https://nodejs.org/dist/v${nodejs_VERSION}/node-v${nodejs_VERSION}-linux-${ARCH}.tar.xz" \
-    && curl -fsSLO --compressed "https://nodejs.org/dist/v${nodejs_VERSION}/SHASUMS256.txt" \
-    && grep " node-v${nodejs_VERSION}-linux-${ARCH}.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
+    && DOWNLOAD_URL="https://nodejs.org/dist/v${nodejs_VERSION}.0/node-v${nodejs_VERSION}.0-linux-${ARCH}.tar.xz" \
+    && echo "Downloading from: $DOWNLOAD_URL" \
+    && curl -fsSLO --compressed "$DOWNLOAD_URL" \
+    && curl -fsSLO --compressed "https://nodejs.org/dist/v${nodejs_VERSION}.0/SHASUMS256.txt" \
+    && grep " node-v${nodejs_VERSION}.0-linux-${ARCH}.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
     && mkdir -p /usr/local \
-    && tar -xJf "node-v${nodejs_VERSION}-linux-${ARCH}.tar.xz" -C /usr/local --strip-components=1 --no-same-owner \
-    && rm "node-v${nodejs_VERSION}-linux-${ARCH}.tar.xz" SHASUMS256.txt \
-    && ln -s /usr/local/bin/node /usr/local/bin/nodejs \
+    && tar -xJf "node-v${nodejs_VERSION}.0-linux-${ARCH}.tar.xz" -C /usr/local --strip-components=1 --no-same-owner \
+    && rm "node-v${nodejs_VERSION}.0-linux-${ARCH}.tar.xz" SHASUMS256.txt \
+    && ln -sf /usr/local/bin/node /usr/local/bin/nodejs \
     # Install latest NPM and Yarn
     && npm install -g npm@latest \
     && npm install -g yarn \
