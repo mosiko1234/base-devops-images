@@ -1,26 +1,45 @@
-# Use base image
-ARG BASE_IMAGE
+ARG BASE_IMAGE=adafef2e596e/base-image:latest
 FROM ${BASE_IMAGE}
 
-# Set environment variables
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Accept Java version as an argument
+# Accept Java version as build argument
 ARG JAVA_VERSION
 
-# Install Java dynamically
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends openjdk-${JAVA_VERSION}-jdk && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    JAVA_HOME=/usr/lib/jvm/java-${JAVA_VERSION}-openjdk-amd64
 
-# Set default JAVA_HOME
-ENV JAVA_HOME=/usr/lib/jvm/java-${JAVA_VERSION}-openjdk-amd64
-ENV PATH="$JAVA_HOME/bin:$PATH"
+# Switch to root for installations
+USER root
 
-# Verify installation
-RUN java -version
+# Install Java and essential tools
+RUN set -ex \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        openjdk-${JAVA_VERSION}-jdk-headless \
+        maven \
+        gradle \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    # Verify installation
+    && java -version \
+    && javac -version \
+    && mvn -version \
+    && gradle -version
 
-# Set default entrypoint
-ENTRYPOINT ["/bin/bash", "-c"]
-CMD ["java -version"]
+# Create app directory and set permissions
+RUN mkdir -p /app \
+    && chown -R devops:devops /app
+
+# Set working directory
+WORKDIR /app
+
+# Switch back to non-root user
+USER devops
+
+# Verify installation as non-root user
+RUN java -version && javac -version
+
+# Default command
+CMD ["java", "-version"]
