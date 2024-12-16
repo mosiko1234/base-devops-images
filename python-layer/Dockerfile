@@ -1,58 +1,55 @@
-# Use base image
-ARG BASE_IMAGE
+ARG BASE_IMAGE=adafef2e596e/base-image:latest
 FROM ${BASE_IMAGE}
 
-# Set environment variables
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Accept Python version as an argument
+# Accept Python version as build argument
 ARG PYTHON_VERSION
 
-# Install core dependencies for Python
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        build-essential \
-        libssl-dev \
-        zlib1g-dev \
-        libbz2-dev \
-        libreadline-dev \
-        libsqlite3-dev \
-        libffi-dev \
-        liblzma-dev \
-        software-properties-common \
-        wget && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    POETRY_HOME="/opt/poetry" \
+    POETRY_VIRTUALENVS_CREATE=false
 
+# Switch to root for installations
+USER root
 
-# Add deadsnakes PPA for Python installation
-RUN add-apt-repository ppa:deadsnakes/ppa && apt-get update && \
-    apt-get install -y --no-install-recommends \
-        python${PYTHON_VERSION} python${PYTHON_VERSION}-dev && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Create required directories with proper permissions
+RUN mkdir -p /var/lib/apt/lists/partial
 
-# Install pip using get-pip.py
-RUN wget https://bootstrap.pypa.io/get-pip.py && \
-    python${PYTHON_VERSION} get-pip.py && \
-    rm get-pip.py
+# Install Python and essential tools
+RUN set -ex \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        python${PYTHON_VERSION} \
+        python${PYTHON_VERSION}-dev \
+        python${PYTHON_VERSION}-venv \
+        python3-pip \
+        python3-wheel \
+        python3-setuptools \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    # Create Python symlinks
+    && ln -sf /usr/bin/python${PYTHON_VERSION} /usr/local/bin/python \
+    && ln -sf /usr/bin/python${PYTHON_VERSION} /usr/local/bin/python3 \
+    # Upgrade pip
+    && python -m pip install --no-cache-dir --upgrade pip \
+    # Verify installation
+    && python --version \
+    && pip --version
 
-# Configure Python alternatives
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 && \
-    update-alternatives --set python3 /usr/bin/python${PYTHON_VERSION}
+# Create app directory and set permissions
+RUN mkdir -p /app \
+    && chown -R devops:devops /app
 
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3-apt && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Set working directory
+WORKDIR /app
 
-# Skip ldd if running under ARM emulation
-RUN [ "$(uname -m)" != "aarch64" ] || echo "Skipping ldd on ARM"
+# Switch back to non-root user
+USER devops
 
-# Verify Python and pip versions
-RUN python3 --version && pip3 --version
+# Verify installation as non-root user
+RUN python --version && pip --version
 
-# Set default entrypoint and command
-ENTRYPOINT ["/bin/bash", "-c"]
-CMD ["python3 --version"]
+# Default command
+CMD ["python", "-V"]
