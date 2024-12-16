@@ -36,7 +36,7 @@ jobs:
           echo "matrix={
             \"python\":[\"3.11\",\"3.12\"],
             \"java\":[\"11\",\"17\"],
-            \"nodejs\":[\"16\",\"18\",\"20\",\"22\"]
+            \"nodejs\":[\"16\",\"18\",\"20\",\"22\",\"23\"]
           }" >> $GITHUB_OUTPUT
 
   build-base:
@@ -47,6 +47,12 @@ jobs:
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
       
       - name: Build and push base image
         uses: docker/build-push-action@v5
@@ -70,20 +76,53 @@ jobs:
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
+  test-base:
+    needs: build-base
+    name: Test Base Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Docker Compose
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+      
+      - name: Run base image tests
+        run: |
+          docker-compose -f ./tests/docker-compose.base.yml up --abort-on-container-exit
+        env:
+          DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
+
   build-images:
-    needs: [setup, build-base]
+    needs: [setup, test-base]
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
       fail-fast: false
-    
     name: Build ${{ matrix.type }} ${{ matrix.version }}
-    
     steps:
       - uses: actions/checkout@v4
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      
+      - name: Set version variable
+        id: vars
+        run: |
+          if [ "${{ matrix.type }}" = "python" ]; then
+            echo "version_arg=PYTHON_VERSION" >> $GITHUB_OUTPUT
+          elif [ "${{ matrix.type }}" = "java" ]; then
+            echo "version_arg=JAVA_VERSION" >> $GITHUB_OUTPUT
+          elif [ "${{ matrix.type }}" = "nodejs" ]; then
+            echo "version_arg=NODEJS_VERSION" >> $GITHUB_OUTPUT
+          fi
       
       - name: Build and push image
         uses: docker/build-push-action@v5
@@ -93,35 +132,53 @@ jobs:
           push: true
           build-args: |
             BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest
-            ${{ upper(matrix.type) }}_VERSION=${{ matrix.version }}
+            ${{ steps.vars.outputs.version_arg }}=${{ matrix.version }}
           tags: |
             ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.type }}-${{ matrix.version }}:latest
             ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.type }}-${{ matrix.version }}:${{ github.sha }}
           cache-from: type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.type }}-${{ matrix.version }}:buildcache
           cache-to: type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/${{ matrix.type }}-${{ matrix.version }}:buildcache,mode=max
 
-  test:
-    needs: [build-images]
+  test-images:
+    needs: build-images
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
       fail-fast: false
-    
     name: Test ${{ matrix.type }} ${{ matrix.version }}
-    
     steps:
-      - uses: actions/checkout@v4
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
       
-      - name: Run tests
+      - name: Test image version
         run: |
-          docker run --rm ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.type }}-${{ matrix.version }}:latest \
-            ${{ matrix.type }} --version
+          if [ "${{ matrix.type }}" = "nodejs" ]; then
+            docker run --rm ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.type }}-${{ matrix.version }}:latest node --version
+          elif [ "${{ matrix.type }}" = "python" ]; then
+            docker run --rm ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.type }}-${{ matrix.version }}:latest python --version
+          elif [ "${{ matrix.type }}" = "java" ]; then
+            docker run --rm ${{ secrets.DOCKERHUB_REPO }}/${{ matrix.type }}-${{ matrix.version }}:latest java -version
+          fi
 
-  e2e:
-    needs: [test]
+  e2e-tests:
+    needs: test-images
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Install Docker Compose
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
       
       - name: Run E2E tests
         run: |
@@ -130,7 +187,7 @@ jobs:
           DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
 
   report:
-    needs: [e2e]
+    needs: [build-base, build-images, test-images, e2e-tests]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -140,8 +197,8 @@ jobs:
           echo "### Build Report $(date)" > report.md
           echo "- Base Image: ${{ needs.build-base.result == 'success' && '✅' || '❌' }}" >> report.md
           echo "- Images Built: ${{ needs.build-images.result == 'success' && '✅' || '❌' }}" >> report.md
-          echo "- Tests Passed: ${{ needs.test.result == 'success' && '✅' || '❌' }}" >> report.md
-          echo "- E2E Tests: ${{ needs.e2e.result == 'success' && '✅' || '❌' }}" >> report.md
+          echo "- Tests Passed: ${{ needs.test-images.result == 'success' && '✅' || '❌' }}" >> report.md
+          echo "- E2E Tests: ${{ needs.e2e-tests.result == 'success' && '✅' || '❌' }}" >> report.md
       
       - name: Send to Slack
         if: always()
@@ -154,3 +211,9 @@ jobs:
             ${{ steps.report.outputs.report }}
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-report
+          path: report.md
