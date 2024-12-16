@@ -13,23 +13,13 @@ ENV NODE_ENV=production \
 USER root
 
 # Install Node.js and npm
-RUN set -ex \
-    # Verify supported architecture
-    && dpkgArch="$(dpkg --print-architecture)" \
-    && case "${dpkgArch##*-}" in \
-        amd64|arm64) echo "Architecture ${dpkgArch} is supported" ;; \
-        *) echo "Architecture ${dpkgArch} is not supported" && exit 1 ;; \
-    esac \
-    # Install Node.js
-    && apt-get update \
-    && apt-get install -y curl \
-    && curl -fsSL https://deb.nodesource.com/setup_${NODEJS_VERSION}.x | bash - \
-    && apt-get install -y --no-install-recommends \
-        nodejs \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    # Install yarn
-    && npm install -g yarn \
+# Install Node.js and npm dynamically
+RUN apt-get update && \
+    curl -fsSL https://deb.nodesource.com/setup_${nodejs_VERSION}.x | bash - && \
+    apt-get install -y --no-install-recommends \
+        nodejs && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* \
     # Verify installations
     && echo "Node version: $(node --version)" \
     && echo "NPM version: $(npm --version)" \
