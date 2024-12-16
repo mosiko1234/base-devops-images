@@ -2,7 +2,7 @@ ARG BASE_IMAGE=adafef2e596e/base-image:latest
 FROM ${BASE_IMAGE}
 
 # Accept Node.js version as build argument
-ARG nodejs_VERSION
+ARG NODEJS_VERSION
 
 # Set environment variables
 ENV NODE_ENV=production \
@@ -12,31 +12,39 @@ ENV NODE_ENV=production \
 # Switch to root for installations
 USER root
 
-# Improved architecture detection for Node.js binary
+# Install Node.js and npm with architecture detection
 RUN set -ex \
-    && ARCH= && dpkgArch="$(dpkg --print-architecture)" \
+    # Check architecture and verify support
+    && dpkgArch="$(dpkg --print-architecture)" \
     && case "${dpkgArch##*-}" in \
-        amd64) ARCH='x64';; \
-        arm64) ARCH='arm64';; \
-        *) echo "unsupported architecture ${dpkgArch}"; exit 1;; \
+        amd64) echo "Architecture: amd64" ;; \
+        arm64) echo "Architecture: arm64" ;; \
+        *) echo "Unsupported architecture: ${dpkgArch}"; exit 1 ;; \
     esac \
-    # Install Node.js with verification
-    && DOWNLOAD_URL="https://nodejs.org/dist/v${nodejs_VERSION}.0/node-v${nodejs_VERSION}.0-linux-${ARCH}.tar.xz" \
-    && echo "Downloading from: $DOWNLOAD_URL" \
-    && curl -fsSLO --compressed "$DOWNLOAD_URL" \
-    && curl -fsSLO --compressed "https://nodejs.org/dist/v${nodejs_VERSION}.0/SHASUMS256.txt" \
-    && grep " node-v${nodejs_VERSION}.0-linux-${ARCH}.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
-    && mkdir -p /usr/local \
-    && tar -xJf "node-v${nodejs_VERSION}.0-linux-${ARCH}.tar.xz" -C /usr/local --strip-components=1 --no-same-owner \
-    && rm "node-v${nodejs_VERSION}.0-linux-${ARCH}.tar.xz" SHASUMS256.txt \
-    && ln -sf /usr/local/bin/node /usr/local/bin/nodejs \
-    # Install latest NPM and Yarn
-    && npm install -g npm@latest \
+    # Install Node.js
+    && apt-get update \
+    && mkdir -p /etc/apt/keyrings \
+    && case "${dpkgArch##*-}" in \
+        amd64) \
+            curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+            && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODEJS_VERSION}.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
+            ;; \
+        arm64) \
+            curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+            && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODEJS_VERSION}.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
+            ;; \
+    esac \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    # Install yarn
     && npm install -g yarn \
     # Verify installations
-    && node --version \
-    && npm --version \
-    && yarn --version
+    && echo "Node version: $(node --version)" \
+    && echo "NPM version: $(npm --version)" \
+    && echo "Yarn version: $(yarn --version)"
 
 # Set secure NPM configs
 RUN npm config set unsafe-perm false \
