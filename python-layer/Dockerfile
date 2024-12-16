@@ -7,18 +7,17 @@ ARG PYTHON_VERSION
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    DEBIAN_FRONTEND=noninteractive \
-    POETRY_HOME="/opt/poetry" \
-    POETRY_VIRTUALENVS_CREATE=false
+    DEBIAN_FRONTEND=noninteractive
 
 # Switch to root for installations
 USER root
 
-# Create required directories with proper permissions
-RUN mkdir -p /var/lib/apt/lists/partial
-
 # Install Python and essential tools
 RUN set -ex \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        software-properties-common \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         python${PYTHON_VERSION} \
@@ -29,11 +28,10 @@ RUN set -ex \
         python3-setuptools \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-    # Create Python symlinks
     && ln -sf /usr/bin/python${PYTHON_VERSION} /usr/local/bin/python \
     && ln -sf /usr/bin/python${PYTHON_VERSION} /usr/local/bin/python3 \
-    # Upgrade pip
-    && python -m pip install --no-cache-dir --upgrade pip \
+    # Install pip for specific Python version
+    && curl -sS https://bootstrap.pypa.io/get-pip.py | python${PYTHON_VERSION} \
     # Verify installation
     && python --version \
     && pip --version
