@@ -1,24 +1,47 @@
-# Use base image
-ARG BASE_IMAGE
+ARG BASE_IMAGE=adafef2e596e/base-image:latest
 FROM ${BASE_IMAGE}
 
-# Set environment variables
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Accept Node.js version as an argument
+# Accept Node.js version as build argument with default
 ARG nodejs_VERSION
 
-# Install Node.js and npm dynamically
-RUN apt-get update && \
-    curl -fsSL https://deb.nodesource.com/setup_${nodejs_VERSION}.x | bash - && \
-    apt-get install -y --no-install-recommends \
-        nodejs && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Set environment variables
+ENV NODE_ENV=production \
+    NPM_CONFIG_LOGLEVEL=error \
+    DEBIAN_FRONTEND=noninteractive
 
-# Verify installation
-RUN node -v && npm -v
+# Switch to root for installations
+USER root
 
-# Set default entrypoint
-ENTRYPOINT ["/bin/bash", "-c"]
-CMD ["node -v"]
+# Create required directories with proper permissions
+RUN mkdir -p /var/lib/apt/lists/partial
+
+# Install Node.js and npm
+RUN set -ex \
+    && apt-get update \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${nodejs_VERSION}.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    # Verify installation
+    && node --version \
+    && npm --version
+
+# Create app directory and set permissions
+RUN mkdir -p /app \
+    && chown -R devops:devops /app
+
+# Set working directory
+WORKDIR /app
+
+# Switch back to non-root user
+USER devops
+
+# Verify installation as non-root user
+RUN node --version && npm --version
+
+# Default command
+CMD ["node", "-v"]
