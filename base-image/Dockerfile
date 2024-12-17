@@ -26,11 +26,15 @@ RUN wget -qO /usr/bin/yq https://github.com/mikefarah/yq/releases/latest/downloa
 # התקנת Helm
 RUN curl -s https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
-# התקנת OpenShift CLI - תמיכה ב-ARM64 ו-AMD64
+# התקנת OpenShift CLI (מותאם לארכיטקטורה)
 ARG TARGETARCH
-RUN wget -qO oc.tar.gz "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.8.0/openshift-client-linux-${TARGETARCH}.tar.gz" && \
-    tar -xzf oc.tar.gz -C /usr/local/bin && chmod +x /usr/local/bin/oc && \
-    rm oc.tar.gz
+RUN if [ "${TARGETARCH}" = "amd64" ]; then \
+      wget -qO oc.tar.gz "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.8.0/openshift-client-linux-amd64.tar.gz" && \
+      tar -xzf oc.tar.gz -C /usr/local/bin && chmod +x /usr/local/bin/oc && \
+      rm oc.tar.gz; \
+    else \
+      echo "Skipping OpenShift CLI installation for ${TARGETARCH}"; \
+    fi
 
 # התקנת ArgoCD CLI
 RUN wget -qO /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 && \
@@ -43,7 +47,7 @@ RUN wget -qO /usr/local/bin/gitlab-runner "https://gitlab-runner-downloads.s3.am
 # בדיקת הכלים
 RUN yq --version && \
     helm version --short && \
-    oc version --client || echo "oc not available for current architecture" && \
+    if [ -f "/usr/local/bin/oc" ]; then oc version --client; else echo "oc not available"; fi && \
     argocd version --client && \
     gitlab-runner --version
 
@@ -66,14 +70,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # העתקת הכלים מהשלב הקודם
 COPY --from=builder /usr/bin/yq /usr/bin/yq
 COPY --from=builder /usr/local/bin/helm /usr/local/bin/helm
-COPY --from=builder /usr/local/bin/oc /usr/local/bin/oc
+COPY --from=builder /usr/local/bin/oc /usr/local/bin/oc || true
 COPY --from=builder /usr/local/bin/argocd /usr/local/bin/argocd
 COPY --from=builder /usr/local/bin/gitlab-runner /usr/local/bin/gitlab-runner
 
 # בדיקת כלים בשלב הסופי
 RUN yq --version && \
     helm version --short && \
-    oc version --client || echo "oc not available for current architecture" && \
+    if [ -f "/usr/local/bin/oc" ]; then oc version --client; else echo "oc not available"; fi && \
     argocd version --client && \
     gitlab-runner --version
 
