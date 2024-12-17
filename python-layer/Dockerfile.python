@@ -1,4 +1,4 @@
-ARG BASE_IMAGE
+ARG BASE_IMAGE=adafef2e596e/base-image:latest
 FROM ${BASE_IMAGE}
 
 # Set environment variables
