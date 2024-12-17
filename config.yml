@@ -13,4 +13,4 @@ languages:
     versions:
 #      - 22
 #      - 23
-      - 24
+      - 16
