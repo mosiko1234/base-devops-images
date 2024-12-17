@@ -16,20 +16,27 @@ ENV DEBIAN_FRONTEND=noninteractive \
 ARG NODE_VERSION
 ENV NODE_VERSION=${NODE_VERSION}
 
-# Install Node.js and npm with additional useful tools
+# Install Node.js and npm with version-specific configurations
 RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - && \
     apt-get update && \
     apt-get install -y \
     nodejs \
     build-essential \
     python3 && \
-    # Install global npm packages
-    npm install -g npm@latest && \
-    npm install -g \
-    pnpm \
-    yarn \
-    typescript \
-    && \
+    # Install global npm packages with version handling
+    if [ "${NODE_VERSION}" -lt "20" ]; then \
+        npm install -g npm@8.19.4 && \
+        npm install -g \
+        pnpm@7.33.7 \
+        yarn@1.22.19 \
+        typescript@5.3.3; \
+    else \
+        npm install -g npm@latest && \
+        npm install -g \
+        pnpm@latest \
+        yarn@latest \
+        typescript@latest; \
+    fi && \
     # Clean up
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
@@ -39,7 +46,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - && \
 WORKDIR /app
 
 # Add npm binary path to PATH
-ENV PATH /app/node_modules/.bin:$PATH
+ENV PATH=/app/node_modules/.bin:$PATH
 
 # Verify installation and show versions
 RUN echo "Node version: $(node -v)" && \
