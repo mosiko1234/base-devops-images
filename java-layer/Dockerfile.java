@@ -3,7 +3,7 @@ ARG BASE_IMAGE=adafef2e596e/base-image:latest
 FROM ${BASE_IMAGE}
 
 # Add metadata
-LABEL maintainer="your-email@example.com" \
+LABEL maintainer="moshee@kayhut.com" \
       description="Java development environment"
 
 # Set environment variables
