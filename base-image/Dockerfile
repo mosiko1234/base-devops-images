@@ -1,4 +1,4 @@
-# Start with a lightweight Ubuntu image
+# Start with a lightweight Ubuntu image (Multi-Arch)
 FROM --platform=linux/amd64 ubuntu:20.04 AS base
 
 # Environment variables
@@ -21,7 +21,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     openssh-client \
     gnupg \
-    apt-transport-https && \
+    apt-transport-https \
+    qemu-user-static && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install AWS CLI
