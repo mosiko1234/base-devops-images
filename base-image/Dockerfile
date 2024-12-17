@@ -1,9 +1,9 @@
 FROM --platform=${BUILDPLATFORM:-linux/amd64} ubuntu:20.04 AS builder
 
-LABEL maintainer="your-email@example.com" \
+LABEL maintainer="moshee@kayhut.com" \
       version="1.0.0" \
       description="Development tools container with Helm, ArgoCD, and GitLab Runner" \
-      org.opencontainers.image.source="https://github.com/yourusername/devops-tools"
+      org.opencontainers.image.source="https://github.com/mosiko1234/base-devops-images"
 
 ENV PATH="/root/.local/bin:$PATH" \
     DEBIAN_FRONTEND=noninteractive \
