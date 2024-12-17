@@ -99,6 +99,11 @@ jobs:
           docker pull hadolint/hadolint:latest
           docker run --rm -i hadolint/hadolint < ./${{ matrix.language }}-layer/Dockerfile.${{ matrix.language }} || echo "Lint issues found for Dockerfile.${{ matrix.language }}" >> ./lint-logs/${{ matrix.language }}.log
 
+      - name: Set Up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+        
       - name: Build Dynamic Language Image
         working-directory: ./${{ matrix.language }}-layer
         run: |
