@@ -1,14 +1,11 @@
-# Start with a lightweight Ubuntu image (Multi-Arch)
-FROM --platform=linux/amd64 ubuntu:20.04 AS base
+# שלב הבנייה - התקנת כל הכלים
+FROM ubuntu:20.04 AS builder
 
-# Environment variables
+# הגדרות סביבה
 ENV PATH="/root/.local/bin:$PATH" \
     DEBIAN_FRONTEND=noninteractive
 
-# Define shell with pipefail
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-
-# Install essential tools and clean up after installation
+# התקנת כלים נדרשים לבנייה
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libxml2-utils \
@@ -21,37 +18,76 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     openssh-client \
     gnupg \
-    apt-transport-https \
-    qemu-user-static && \
+    apt-transport-https && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install AWS CLI
+# התקנת AWS CLI
 RUN curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip && \
     unzip awscliv2.zip && ./aws/install && \
     rm -rf aws awscliv2.zip
 
-# Install yq (YAML processor)
+# התקנת yq (YAML processor)
 RUN wget -qO /usr/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 && \
     chmod +x /usr/bin/yq
 
-# Install Helm (Kubernetes package manager)
+# התקנת Helm (Kubernetes package manager)
 RUN curl -s https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
-# Install OpenShift CLI (oc)
+# התקנת OpenShift CLI (oc)
 RUN wget -qO oc.tar.gz "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.8.0/openshift-client-linux.tar.gz" && \
     tar -xzf oc.tar.gz -C /usr/local/bin && chmod +x /usr/local/bin/oc && \
     rm oc.tar.gz
 
-# Install ArgoCD CLI
+# התקנת ArgoCD CLI
 RUN wget -qO /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 && \
     chmod +x /usr/local/bin/argocd
 
-# Install GitLab Runner CLI
+# התקנת GitLab Runner CLI
 RUN wget -qO /usr/local/bin/gitlab-runner "https://gitlab-runner-downloads.s3.amazonaws.com/v16.5.0/binaries/gitlab-runner-linux-amd64" && \
     chmod +x /usr/local/bin/gitlab-runner
 
-# Set working directory
+# בדיקת התקנות
+RUN aws --version && \
+    yq --version && \
+    helm version && \
+    oc version --client && \
+    argocd version --client && \
+    gitlab-runner --version
+
+# שלב הסופי - יצירת אימג' רזה
+FROM ubuntu:20.04 AS final
+
+# הגדרות סביבה
+ENV PATH="/root/.local/bin:$PATH" \
+    DEBIAN_FRONTEND=noninteractive
+
+# התקנת ספריות מינימליות
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    bash \
+    gnupg \
+    openssh-client && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# העתקת הכלים מהשלב הקודם
+COPY --from=builder /usr/local/bin/aws /usr/local/bin/aws
+COPY --from=builder /usr/bin/yq /usr/bin/yq
+COPY --from=builder /usr/local/bin/helm /usr/local/bin/helm
+COPY --from=builder /usr/local/bin/oc /usr/local/bin/oc
+COPY --from=builder /usr/local/bin/argocd /usr/local/bin/argocd
+COPY --from=builder /usr/local/bin/gitlab-runner /usr/local/bin/gitlab-runner
+
+# בדיקת הכלים בתהליך הבנייה
+RUN aws --version && \
+    yq --version && \
+    helm version && \
+    oc version --client && \
+    argocd version --client && \
+    gitlab-runner --version
+
+# תיקיית העבודה
 WORKDIR /workspace
 
-# Default entrypoint
+# פקודת ברירת מחדל
 ENTRYPOINT ["/bin/bash"]
