@@ -30,15 +30,22 @@ RUN apt-get update && \
     apt-get install -y \
     python${PYTHON_VERSION} \
     python${PYTHON_VERSION}-dev \
-    python${PYTHON_VERSION}-venv \
-    python${PYTHON_VERSION}-distutils && \
-    # Install pip
-    curl -sS https://bootstrap.pypa.io/get-pip.py | python${PYTHON_VERSION} && \
-    # Create symbolic links if they don't exist
+    python${PYTHON_VERSION}-venv && \
+    # Install distutils if version < 3.12
+    if [ $(echo "${PYTHON_VERSION} < 3.12" | bc -l) -eq 1 ]; then \
+        apt-get install -y python${PYTHON_VERSION}-distutils || true; \
+    fi && \
+    # Install pip with version handling
+    if [ $(echo "${PYTHON_VERSION} >= 3.12" | bc -l) -eq 1 ]; then \
+        curl -sS https://bootstrap.pypa.io/get-pip.py | python${PYTHON_VERSION}; \
+    else \
+        curl -sS https://bootstrap.pypa.io/pip/get-pip.py | python${PYTHON_VERSION}; \
+    fi && \
+    # Create symbolic links
     update-alternatives --install /usr/bin/python python /usr/bin/python${PYTHON_VERSION} 1 && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 && \
     # Install essential Python packages with version handling
-    if [ "${PYTHON_VERSION}" \< "3.9" ]; then \
+    if [ $(echo "${PYTHON_VERSION} < 3.9" | bc -l) -eq 1 ]; then \
         python${PYTHON_VERSION} -m pip install \
         "poetry==1.4.2" \
         "pytest<8.0.0" \
