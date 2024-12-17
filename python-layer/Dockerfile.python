@@ -39,8 +39,9 @@ RUN add-apt-repository ppa:deadsnakes/ppa && apt-get update && \
     apt-get install -y --no-install-recommends \
         python${PYTHON_VERSION} \
         python${PYTHON_VERSION}-dev \
-        python${PYTHON_VERSION}-distutils \
         python${PYTHON_VERSION}-venv && \
+    # Try to install distutils if available
+    apt-get install -y --no-install-recommends python${PYTHON_VERSION}-distutils || true && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -48,13 +49,11 @@ RUN add-apt-repository ppa:deadsnakes/ppa && apt-get update && \
 RUN wget -q https://bootstrap.pypa.io/get-pip.py && \
     python${PYTHON_VERSION} get-pip.py && \
     rm get-pip.py && \
-    # Install base packages first
     python${PYTHON_VERSION} -m pip install --no-cache-dir \
         setuptools \
         wheel \
         six \
-        urllib3==2.0.7 && \
-    # Then install development tools
+        virtualenv && \
     python${PYTHON_VERSION} -m pip install --no-cache-dir \
         poetry \
         pytest \
