@@ -27,13 +27,17 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Amazon Corretto JDK
-RUN curl -L -o /etc/apt/keyrings/corretto.key https://apt.corretto.aws/corretto.key && \
+RUN mkdir -p /etc/apt/keyrings && \
+    curl -L -o /etc/apt/keyrings/corretto.key https://apt.corretto.aws/corretto.key && \
     echo "deb [signed-by=/etc/apt/keyrings/corretto.key] https://apt.corretto.aws stable main" > /etc/apt/sources.list.d/corretto.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
         java-${JAVA_VERSION}-amazon-corretto-jdk && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# Set JAVA_HOME environment variable
+ENV JAVA_HOME=/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto
 
 # Install Maven
 ARG MAVEN_VERSION=3.9.6
@@ -54,9 +58,8 @@ RUN curl -fsSL https://services.gradle.org/distributions/gradle-${GRADLE_VERSION
 # Create workspace directory
 WORKDIR /workspace
 
-# Set environment variables
-ENV JAVA_HOME=/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto \
-    PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${GRADLE_HOME}/bin:${PATH}
+# Update PATH
+ENV PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${GRADLE_HOME}/bin:${PATH}
 
 # Verify installations
 RUN echo "Java version:" && java -version && \
