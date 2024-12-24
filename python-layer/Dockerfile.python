@@ -2,6 +2,7 @@
 ARG BASE_IMAGE=adafef2e596e/base-image:latest
 FROM ${BASE_IMAGE}
 
+
 # Add metadata
 LABEL maintainer="moshee@kayhut.com" \
       description="Python development environment"
