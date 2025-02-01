@@ -62,9 +62,8 @@ RUN echo "Java version:" && java -version && \
     echo "Gradle version:" && gradle -version
 
 
-ENTRYPOINT ["/bin/bash", "-c"]
-CMD ["java -version"]
-
+ENTRYPOINT ["/bin/bash", "-c", "exec \"$@\"", "--"]
+CMD ["java", "-version"]
 
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD java -version || exit 1
