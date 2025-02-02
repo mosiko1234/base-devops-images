@@ -8,6 +8,7 @@ languages:
       - 3.13
   java:
     versions:
+      - 8
       - 11
       - 17
   node:
