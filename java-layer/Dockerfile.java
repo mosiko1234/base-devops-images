@@ -26,13 +26,16 @@ RUN apt-get update && \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-# התקנת Amazon Corretto JDK בהתאם לגרסה שסופקה
+# התקנת Amazon Corretto JDK בהתאם לגרסה
 RUN mkdir -p /etc/apt/keyrings && \
     curl --fail -L -o /etc/apt/keyrings/corretto.key https://apt.corretto.aws/corretto.key && \
     echo "deb [signed-by=/etc/apt/keyrings/corretto.key] https://apt.corretto.aws stable main" | tee /etc/apt/sources.list.d/corretto.list && \
     apt-get update && \
     if [ "$JAVA_VERSION" = "8" ]; then \
-        apt-get install -y --no-install-recommends java-1.8.0-amazon-corretto; \
+        wget -qO corretto-8.tar.gz https://corretto.aws/downloads/resources/8.333.08.1/amazon-corretto-8.333.08.1-linux-x64.tar.gz && \
+        mkdir -p /usr/lib/jvm/java-1.8.0-amazon-corretto && \
+        tar -xzf corretto-8.tar.gz --strip-components=1 -C /usr/lib/jvm/java-1.8.0-amazon-corretto && \
+        rm corretto-8.tar.gz && \
         echo "export JAVA_HOME=/usr/lib/jvm/java-1.8.0-amazon-corretto" >> /etc/environment; \
         echo "export JAVA_HOME=/usr/lib/jvm/java-1.8.0-amazon-corretto" >> /etc/profile; \
         echo "export JAVA_HOME=/usr/lib/jvm/java-1.8.0-amazon-corretto" >> /root/.bashrc; \
@@ -49,7 +52,7 @@ ENV JAVA_HOME="/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto"
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 # התקנת Maven
-ARG MAVEN_VERSION=3.9.6
+ARG MAVEN_VERSION=3.6.3
 ENV MAVEN_HOME=/opt/maven
 RUN wget -qO- https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz | tar xz -C /opt/ && \
     ln -s /opt/apache-maven-${MAVEN_VERSION} ${MAVEN_HOME} && \
