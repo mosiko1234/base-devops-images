@@ -37,17 +37,18 @@ RUN mkdir -p /etc/apt/keyrings && \
 
 
 
-# הגדרת JAVA_HOME בהתאם לגרסה
 RUN if [ "$JAVA_VERSION" = "8" ]; then \
-        echo "export JAVA_HOME=/usr/lib/jvm/java-1.8.0-amazon-corretto" >> /etc/environment && \
         export JAVA_HOME=/usr/lib/jvm/java-1.8.0-amazon-corretto; \
     else \
-        echo "export JAVA_HOME=/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto" >> /etc/environment && \
         export JAVA_HOME=/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto; \
-    fi
+    fi && \
+    echo "export JAVA_HOME=${JAVA_HOME}" >> /etc/profile && \
+    echo "export JAVA_HOME=${JAVA_HOME}" >> /root/.bashrc && \
+    echo "export JAVA_HOME=${JAVA_HOME}" >> /etc/environment
 
-# ודא שה-JAVA_HOME מעודכן ב-ENV כך שיעבוד גם בהרצת קונטיינר
 ENV JAVA_HOME="/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto"
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
 
 
 
