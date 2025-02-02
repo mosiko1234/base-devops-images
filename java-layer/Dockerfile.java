@@ -28,8 +28,13 @@ RUN mkdir -p /etc/apt/keyrings && \
     curl --fail -L -o /etc/apt/keyrings/corretto.key https://apt.corretto.aws/corretto.key && \
     echo "deb [signed-by=/etc/apt/keyrings/corretto.key] https://apt.corretto.aws stable main" | tee /etc/apt/sources.list.d/corretto.list && \
     apt-get update && \
-    apt-get install -y --no-install-recommends java-${JAVA_VERSION}-amazon-corretto-jdk && \
+    if [ "$JAVA_VERSION" = "8" ]; then \
+        apt-get install -y --no-install-recommends java-1.8.0-amazon-corretto; \
+    else \
+        apt-get install -y --no-install-recommends java-${JAVA_VERSION}-amazon-corretto-jdk; \
+    fi && \
     rm -rf /var/lib/apt/lists/*
+
 
 
 ENV JAVA_HOME=/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto
