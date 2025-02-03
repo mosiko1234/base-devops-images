@@ -13,6 +13,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 ARG JAVA_VERSION
 RUN if [ -z "$JAVA_VERSION" ]; then echo "JAVA_VERSION is not set!"; exit 1; fi
 
+# קביעת JAVA_HOME דרך ENV (לא בתוך RUN)
+ENV JAVA_HOME="/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto"
+ENV PATH="${JAVA_HOME}/bin:/opt/maven/bin:/opt/gradle/bin:${PATH}"
+
 # יצירת משתמש לא-פריבילגי (אבטחה)
 RUN groupadd -g 1000 appuser && \
     useradd -u 1000 -g appuser -m appuser && \
@@ -32,11 +36,6 @@ RUN apt-get update && \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-# הגדרת JAVA_HOME כדי למנוע בעיות בתוך RUN
-ARG JAVA_HOME
-ENV JAVA_HOME="/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto"
-ENV PATH="${JAVA_HOME}/bin:/opt/maven/bin:/opt/gradle/bin:${PATH}"
-
 # התקנת Amazon Corretto JDK (תומך ב-arm64 וב-x86_64)
 RUN mkdir -p /etc/apt/keyrings && \
     curl --fail -L -o /etc/apt/keyrings/corretto.key https://apt.corretto.aws/corretto.key && \
@@ -53,7 +52,7 @@ RUN mkdir -p /etc/apt/keyrings && \
         tar -xzf corretto-8.tar.gz --strip-components=1 -C /usr/lib/jvm/java-1.8.0-amazon-corretto && \
         rm corretto-8.tar.gz && \
         ln -s /usr/lib/jvm/java-1.8.0-amazon-corretto/bin/java /usr/local/bin/java; \
-        JAVA_HOME="/usr/lib/jvm/java-1.8.0-amazon-corretto"; \
+        ENV JAVA_HOME="/usr/lib/jvm/java-1.8.0-amazon-corretto"; \
     else \
         apt-get install -y --no-install-recommends java-${JAVA_VERSION}-amazon-corretto-jdk; \
     fi && \
@@ -82,7 +81,8 @@ USER appuser
 WORKDIR /workspace
 
 # אימות התקנות
-RUN java -version && \
+RUN echo "JAVA_HOME is set to: $JAVA_HOME" && \
+    java -version && \
     mvn -version && \
     gradle -version
 

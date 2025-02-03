@@ -1,7 +1,7 @@
 languages:
-  python:
-    versions:
-      - 3.8
+#  python:
+#    versions:
+#      - 3.8
    #   - '3.10'
    #   - 3.11
    #   - 3.12
@@ -9,10 +9,10 @@ languages:
   java:
     versions:
       - 8
-      - 11
-      - 17
-  node:
-    versions:
+#      - 11
+#      - 17
+#  node:
+#    versions:
       - 16
    #   - 18
    #   - 20
