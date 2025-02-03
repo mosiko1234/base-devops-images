@@ -36,16 +36,17 @@ RUN mkdir -p /etc/apt/keyrings && \
         mkdir -p /usr/lib/jvm/java-1.8.0-amazon-corretto && \
         tar -xzf corretto-8.tar.gz --strip-components=1 -C /usr/lib/jvm/java-1.8.0-amazon-corretto && \
         rm corretto-8.tar.gz && \
-        echo "export JAVA_HOME=/usr/lib/jvm/java-1.8.0-amazon-corretto" >> /etc/environment; \
-        echo "export JAVA_HOME=/usr/lib/jvm/java-1.8.0-amazon-corretto" >> /etc/profile; \
-        echo "export JAVA_HOME=/usr/lib/jvm/java-1.8.0-amazon-corretto" >> /root/.bashrc; \
+        ln -s /usr/lib/jvm/java-1.8.0-amazon-corretto/bin/java /usr/local/bin/java && \
+        echo "export JAVA_HOME=/usr/lib/jvm/java-1.8.0-amazon-corretto" >> /etc/profile.d/java.sh && \
+        echo "export PATH=\$JAVA_HOME/bin:\$PATH" >> /etc/profile.d/java.sh; \
     else \
-        apt-get install -y --no-install-recommends java-${JAVA_VERSION}-amazon-corretto-jdk; \
-        echo "export JAVA_HOME=/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto" >> /etc/environment; \
-        echo "export JAVA_HOME=/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto" >> /etc/profile; \
-        echo "export JAVA_HOME=/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto" >> /root/.bashrc; \
+        apt-get install -y --no-install-recommends java-${JAVA_VERSION}-amazon-corretto-jdk && \
+        ln -s /usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto/bin/java /usr/local/bin/java && \
+        echo "export JAVA_HOME=/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto" >> /etc/profile.d/java.sh && \
+        echo "export PATH=\$JAVA_HOME/bin:\$PATH" >> /etc/profile.d/java.sh; \
     fi && \
     rm -rf /var/lib/apt/lists/*
+
 
 # הגדרת JAVA_HOME
 ENV JAVA_HOME="/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto"
