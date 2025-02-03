@@ -49,7 +49,6 @@ RUN mkdir -p /etc/apt/keyrings && \
     rm -rf /var/lib/apt/lists/*
 
 # הגדרת JAVA_HOME ב-ENV כדי להיות זמין תמיד
-ARG JAVA_HOME
 ENV JAVA_HOME=${JAVA_HOME}
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
@@ -58,7 +57,8 @@ ARG MAVEN_VERSION=3.9.6
 ENV MAVEN_HOME=/opt/maven
 RUN wget -qO- https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz | tar xz -C /opt/ && \
     ln -s /opt/apache-maven-${MAVEN_VERSION} ${MAVEN_HOME} && \
-    ln -s ${MAVEN_HOME}/bin/mvn /usr/local/bin/mvn
+    ln -s ${MAVEN_HOME}/bin/mvn /usr/local/bin/mvn && \
+    rm -rf /var/lib/apt/lists/*
 
 # התקנת Gradle
 ARG GRADLE_VERSION=8.5
@@ -67,7 +67,8 @@ RUN wget -qO gradle.zip https://services.gradle.org/distributions/gradle-${GRADL
     unzip -q gradle.zip -d /opt && \
     rm gradle.zip && \
     ln -s /opt/gradle-${GRADLE_VERSION} ${GRADLE_HOME} && \
-    ln -s ${GRADLE_HOME}/bin/gradle /usr/local/bin/gradle
+    ln -s ${GRADLE_HOME}/bin/gradle /usr/local/bin/gradle && \
+    rm -rf /var/lib/apt/lists/*
 
 # יצירת תיקיית העבודה
 WORKDIR /workspace
