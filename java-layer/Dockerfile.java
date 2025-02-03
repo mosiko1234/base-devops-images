@@ -52,7 +52,7 @@ ENV JAVA_HOME="/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto"
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 # התקנת Maven
-ARG MAVEN_VERSION=3.6.3
+ARG MAVEN_VERSION=3.9.6
 ENV MAVEN_HOME=/opt/maven
 RUN wget -qO- https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz | tar xz -C /opt/ && \
     ln -s /opt/apache-maven-${MAVEN_VERSION} ${MAVEN_HOME} && \
@@ -74,7 +74,7 @@ WORKDIR /workspace
 ENV PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${GRADLE_HOME}/bin:${PATH}
 
 # אימות התקנות
-RUN source /etc/environment && \
+RUN . /etc/environment && \
     echo "Java version:" && java -version && \
     echo "Maven version:" && mvn -version && \
     echo "Gradle version:" && gradle -version
