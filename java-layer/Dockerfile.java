@@ -32,20 +32,24 @@ RUN mkdir -p /etc/apt/keyrings && \
     echo "deb [signed-by=/etc/apt/keyrings/corretto.key] https://apt.corretto.aws stable main" | tee /etc/apt/sources.list.d/corretto.list && \
     apt-get update && \
     if [ "$JAVA_VERSION" = "8" ]; then \
-        wget -qO corretto-8.tar.gz https://corretto.aws/downloads/resources/8.333.08.1/amazon-corretto-8.333.08.1-linux-x64.tar.gz && \
+        wget -qO corretto-8.tar.gz "https://corretto.aws/downloads/latest/amazon-corretto-8-x64-linux-jdk.tar.gz" && \
         mkdir -p /usr/lib/jvm/java-1.8.0-amazon-corretto && \
         tar -xzf corretto-8.tar.gz --strip-components=1 -C /usr/lib/jvm/java-1.8.0-amazon-corretto && \
         rm corretto-8.tar.gz && \
         ln -s /usr/lib/jvm/java-1.8.0-amazon-corretto/bin/java /usr/local/bin/java && \
         echo "export JAVA_HOME=/usr/lib/jvm/java-1.8.0-amazon-corretto" >> /etc/profile.d/java.sh && \
         echo "export PATH=\$JAVA_HOME/bin:\$PATH" >> /etc/profile.d/java.sh; \
-    else \
+    elif apt-cache show java-${JAVA_VERSION}-amazon-corretto-jdk > /dev/null 2>&1; then \
         apt-get install -y --no-install-recommends java-${JAVA_VERSION}-amazon-corretto-jdk && \
         ln -s /usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto/bin/java /usr/local/bin/java && \
         echo "export JAVA_HOME=/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto" >> /etc/profile.d/java.sh && \
         echo "export PATH=\$JAVA_HOME/bin:\$PATH" >> /etc/profile.d/java.sh; \
+    else \
+        echo "Error: JAVA_VERSION=$JAVA_VERSION is not supported" >&2; \
+        exit 1; \
     fi && \
     rm -rf /var/lib/apt/lists/*
+
 
 
 # הגדרת JAVA_HOME
