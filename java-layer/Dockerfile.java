@@ -36,24 +36,21 @@ RUN mkdir -p /etc/apt/keyrings && \
         mkdir -p /usr/lib/jvm/java-1.8.0-amazon-corretto && \
         tar -xzf corretto-8.tar.gz --strip-components=1 -C /usr/lib/jvm/java-1.8.0-amazon-corretto && \
         rm corretto-8.tar.gz && \
-        ln -s /usr/lib/jvm/java-1.8.0-amazon-corretto/bin/java /usr/local/bin/java && \
-        echo "export JAVA_HOME=/usr/lib/jvm/java-1.8.0-amazon-corretto" >> /etc/profile.d/java.sh && \
-        echo "export PATH=\$JAVA_HOME/bin:\$PATH" >> /etc/profile.d/java.sh; \
-    elif apt-cache show java-${JAVA_VERSION}-amazon-corretto-jdk > /dev/null 2>&1; then \
-        apt-get install -y --no-install-recommends java-${JAVA_VERSION}-amazon-corretto-jdk && \
-        ln -s /usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto/bin/java /usr/local/bin/java && \
-        echo "export JAVA_HOME=/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto" >> /etc/profile.d/java.sh && \
-        echo "export PATH=\$JAVA_HOME/bin:\$PATH" >> /etc/profile.d/java.sh; \
+        ln -s /usr/lib/jvm/java-1.8.0-amazon-corretto/bin/java /usr/local/bin/java; \
+        export JAVA_HOME=/usr/lib/jvm/java-1.8.0-amazon-corretto; \
     else \
-        echo "Error: JAVA_VERSION=$JAVA_VERSION is not supported" >&2; \
-        exit 1; \
+        apt-get install -y --no-install-recommends java-${JAVA_VERSION}-amazon-corretto-jdk && \
+        ln -s /usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto/bin/java /usr/local/bin/java; \
+        export JAVA_HOME=/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto; \
     fi && \
+    echo "export JAVA_HOME=${JAVA_HOME}" >> /etc/profile.d/java.sh && \
+    echo "export PATH=${JAVA_HOME}/bin:${PATH}" >> /etc/profile.d/java.sh && \
+    chmod +x /etc/profile.d/java.sh && \
     rm -rf /var/lib/apt/lists/*
 
-
-
-# הגדרת JAVA_HOME
-ENV JAVA_HOME="/usr/lib/jvm/java-${JAVA_VERSION}-amazon-corretto"
+# הגדרת JAVA_HOME ב-ENV כדי להיות זמין תמיד
+ARG JAVA_HOME
+ENV JAVA_HOME=${JAVA_HOME}
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 # התקנת Maven
@@ -79,10 +76,10 @@ WORKDIR /workspace
 ENV PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${GRADLE_HOME}/bin:${PATH}
 
 # אימות התקנות
-RUN . /etc/environment && \
-    echo "Java version:" && java -version && \
-    echo "Maven version:" && mvn -version && \
-    echo "Gradle version:" && gradle -version
+RUN bash -c "source /etc/profile.d/java.sh && \
+    echo \"Java version:\" && java -version && \
+    echo \"Maven version:\" && mvn -version && \
+    echo \"Gradle version:\" && gradle -version"
 
 # Entrypoint כברירת מחדל
 ENTRYPOINT ["/bin/bash", "-c", "exec \"$@\"", "--"]
