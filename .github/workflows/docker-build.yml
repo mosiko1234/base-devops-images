@@ -25,7 +25,7 @@ jobs:
         id: set-matrix
         run: |
           python .github/scripts/generate_matrix.py > matrix.json
-          cat matrix.json  # הדפסת המטריצה לאימות
+          cat matrix.json  # הדפסה לבדיקה
           echo "matrix=$(jq -c . < matrix.json)" >> $GITHUB_OUTPUT
 
   build-matrix:
@@ -52,7 +52,6 @@ jobs:
           DOCKER_TAG="${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.language }}:${{ matrix.version }}"
           echo "DOCKER_TAG=$DOCKER_TAG" >> $GITHUB_ENV
           echo "Final Docker Tag: $DOCKER_TAG"
-
 
       - name: Build Docker Image
         run: |
