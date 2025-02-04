@@ -3,7 +3,7 @@ name: Build Docker Images
 on:
   push:
     branches:
-      - new_images
+      - main
 
 jobs:
   build-matrix:
@@ -20,13 +20,15 @@ jobs:
         id: set-matrix
         run: |
           python .github/scripts/generate_matrix.py > matrix.json
-          echo "matrix=$(cat matrix.json)" >> $GITHUB_ENV
+          MATRIX_JSON=$(cat matrix.json)
+          echo "matrix=$MATRIX_JSON" >> $GITHUB_ENV
+          echo "::set-output name=matrix::$MATRIX_JSON"
 
   build-docker:
     needs: build-matrix
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{ fromJson(env.matrix) }}
+      matrix: ${{ fromJson(needs.build-matrix.outputs.matrix) }}
 
     steps:
       - name: Checkout Repository
