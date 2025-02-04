@@ -6,11 +6,30 @@ on:
       - new_images
 
 jobs:
-  build-matrix:
+  generate-matrix:
     runs-on: ubuntu-latest
-
     outputs:
-      matrix: ${{ env.MATRIX }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Install Python dependencies
+        run: pip install pyyaml  # ייתכן שיידרש
+
+      - name: Generate Matrix
+        id: set-matrix
+        run: |
+          python generate_matrix.py > matrix.json
+          cat matrix.json  # הדפסת המטריצה לאימות
+          echo "matrix=$(jq -c . < matrix.json)" >> $GITHUB_OUTPUT
+
+  build-matrix:
+    needs: generate-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
 
     steps:
       - name: Checkout Repository
