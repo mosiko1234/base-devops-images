@@ -34,6 +34,7 @@ jobs:
       - name: Generate Dockerfile from Template
         run: |
           cat Dockerfile.template | sed "s|{{BASE_IMAGE}}|${{ matrix.base_image }}|g" | sed "s|{{PACKAGES}}|${{ matrix.packages }}|g" > Dockerfile
+          cat Dockerfile  # להדפסה לבדיקה
 
       - name: Build Docker Image
         run: |
@@ -45,4 +46,5 @@ jobs:
         run: |
           echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
           docker push myrepo/${{ matrix.language }}:${{ matrix.version }}
+
 
