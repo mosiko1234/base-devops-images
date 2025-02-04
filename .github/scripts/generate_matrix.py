@@ -1,6 +1,8 @@
 import yaml
 import json
+import os
 
+# קריאת קובצי ה-YAML
 with open("languages.yaml") as f:
     languages = yaml.safe_load(f)["languages"]
 
@@ -21,4 +23,11 @@ for lang, versions in languages.items():
             "packages": packages
         })
 
-print(json.dumps({"include": matrix}, indent=2))
+# שמירת המטריצה לפלט JSON תקין
+matrix_json = json.dumps({"include": matrix})
+
+with open(os.getenv('GITHUB_ENV'), 'a') as env_file:
+    env_file.write(f'MATRIX={matrix_json}\n')
+
+# הדפסת ה-JSON כדי לוודא שהפורמט תקין
+print(matrix_json)

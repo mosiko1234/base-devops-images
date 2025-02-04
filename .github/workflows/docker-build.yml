@@ -3,26 +3,21 @@ name: Build Docker Images
 on:
   push:
     branches:
-      - new_images
+      - main
 
 jobs:
   build-matrix:
     runs-on: ubuntu-latest
 
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      matrix: ${{ env.MATRIX }}
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Read YAML Files
-        id: set-matrix
-        run: |
-          python .github/scripts/generate_matrix.py > matrix.json
-          MATRIX_JSON=$(cat matrix.json)
-          echo "matrix=$MATRIX_JSON" >> $GITHUB_ENV
-          echo "::set-output name=matrix::$MATRIX_JSON"
+      - name: Read YAML Files and Generate Matrix
+        run: python .github/scripts/generate_matrix.py
 
   build-docker:
     needs: build-matrix
