@@ -1,4 +1,9 @@
 addons:
+  base_packages:
+    - curl
+    - git
+    - wget
+    - unzip
   python:
     - numpy
     - pandas
