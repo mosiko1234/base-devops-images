@@ -13,7 +13,11 @@ matrix = []
 
 for lang, versions in languages.items():
     for version in versions:
-        base_image = f"{lang}:{version}"
+        if lang == "java":
+            base_image = f"openjdk:{version}"
+        else:
+            base_image = f"{lang}:{version}"
+        
         packages = " ".join(addons.get(lang, []))
 
         matrix.append({
@@ -23,11 +27,10 @@ for lang, versions in languages.items():
             "packages": packages
         })
 
-# שמירת המטריצה לפלט JSON תקין
+# שמירת המטריצה בפורמט JSON
 matrix_json = json.dumps({"include": matrix})
 
 with open(os.getenv('GITHUB_ENV'), 'a') as env_file:
     env_file.write(f'MATRIX={matrix_json}\n')
 
-# הדפסת ה-JSON כדי לוודא שהפורמט תקין
-print(matrix_json)
+print(matrix_json)  # הצגת הפלט לאימות

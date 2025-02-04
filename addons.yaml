@@ -6,3 +6,6 @@ addons:
   node:
     - express
     - axios
+  java:
+    - junit
+    - log4j

@@ -2,7 +2,16 @@ FROM {{BASE_IMAGE}}
 
 RUN apt-get update && apt-get install -y curl
 
-RUN if [ -n "{{PACKAGES}}" ]; then pip install {{PACKAGES}}; fi
+# אם זו תמונה של פייתון - נתקין עם pip
+RUN if [[ "{{BASE_IMAGE}}" == python* ]]; then pip install {{PACKAGES}}; fi
+
+# אם זו תמונה של Node.js - נתקין עם npm
+RUN if [[ "{{BASE_IMAGE}}" == node* ]]; then npm install -g {{PACKAGES}}; fi
+
+# אם זו תמונה של Java - נתקין עם Maven
+RUN if [[ "{{BASE_IMAGE}}" == openjdk* ]]; then \
+    apt-get install -y maven && \
+    mvn dependency:get -Dartifact={{PACKAGES}}; \
+fi
 
 CMD ["bash"]
-
