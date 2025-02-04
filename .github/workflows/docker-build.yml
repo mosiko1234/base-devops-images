@@ -21,20 +21,22 @@ jobs:
           cat Dockerfile.template | sed "s|{{BASE_IMAGE}}|${{ matrix.base_image }}|g" | sed "s|{{PACKAGES}}|${{ matrix.packages }}|g" > Dockerfile
           cat Dockerfile  # הדפסה לבדיקה
 
-      - name: Build Docker Image
+      - name: Set Image Tag
         run: |
           DOCKER_TAG="${{ secrets.DOCKER_USERNAME }}/${{ matrix.language }}:${{ matrix.version }}"
+          echo "DOCKER_TAG=$DOCKER_TAG" >> $GITHUB_ENV
+
+      - name: Build Docker Image
+        run: |
           echo "Building Image: $DOCKER_TAG"
-          docker build -t $DOCKER_TAG .
+          docker build -t "$DOCKER_TAG" .
 
       - name: Verify Image Exists Locally
         run: |
-          DOCKER_TAG="${{ secrets.DOCKER_USERNAME }}/${{ matrix.language }}:${{ matrix.version }}"
           echo "Verifying image existence: $DOCKER_TAG"
           docker images | grep "$DOCKER_TAG" || (echo "Image build failed!" && exit 1)
 
       - name: Push Docker Image
         run: |
           echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-          DOCKER_TAG="${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.language }}:${{ matrix.version }}"
-          docker push $DOCKER_TAG
+          docker push "$DOCKER_TAG"
