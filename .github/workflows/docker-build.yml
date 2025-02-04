@@ -45,11 +45,7 @@ jobs:
 
       - name: Set Image Tag
         run: |
-          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
-            echo "ERROR: DOCKERHUB_USERNAME is not set!" >&2
-            exit 1
-          fi
-          DOCKER_TAG="${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.language }}:${{ matrix.version }}"
+          DOCKER_TAG="adafef2e596e/${{ matrix.language }}:${{ matrix.version }}"
           echo "DOCKER_TAG=$DOCKER_TAG" >> $GITHUB_ENV
           echo "Final Docker Tag: $DOCKER_TAG"
 
