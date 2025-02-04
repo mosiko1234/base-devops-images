@@ -21,7 +21,7 @@ jobs:
       - name: Generate Matrix
         id: set-matrix
         run: |
-          python generate_matrix.py > matrix.json
+          python .github/scripts/generate_matrix.py > matrix.json
           cat matrix.json  # הדפסת המטריצה לאימות
           echo "matrix=$(jq -c . < matrix.json)" >> $GITHUB_OUTPUT
 
