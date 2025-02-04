@@ -14,12 +14,11 @@ matrix = []
 for lang, versions in languages.items():
     for version in versions:
         if lang == "java":
-            base_image = f"openjdk:{version}"
+            base_image = f"openjdk:{version}-jdk-bullseye"  # שימוש בגרסה עם apt-get
         else:
             base_image = f"{lang}:{version}"
         
-        packages = " ".join(addons.get(lang, []))
-
+        packages = " ".join(addons.get(lang, []))  # שמירה על חבילות עם גרסה נכונה
 
         matrix.append({
             "language": lang,

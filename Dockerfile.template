@@ -14,7 +14,10 @@ RUN if [[ "{{BASE_IMAGE}}" == node* ]]; then npm install -g {{PACKAGES}}; fi
 RUN if [[ "{{BASE_IMAGE}}" == openjdk* ]]; then \
     curl -fsSL https://downloads.apache.org/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.tar.gz | tar -xz -C /usr/local && \
     ln -s /usr/local/apache-maven-3.9.4/bin/mvn /usr/bin/mvn && \
-    for package in {{PACKAGES}}; do mvn dependency:get -Dartifact=$package; done; \
+    for package in {{PACKAGES}}; do \
+        echo "Installing Maven dependency: $package"; \
+        mvn dependency:get -Dartifact=$package; \
+    done; \
 fi
 
 CMD ["bash"]
