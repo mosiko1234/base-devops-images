@@ -1,7 +1,7 @@
 FROM {{BASE_IMAGE}}
 
-# התקנת curl במקרה שהתמונה היא מינימלית (Distroless)
-RUN mkdir -p /usr/local/bin && curl -fsSL https://curl.se/download/curl-7.79.1.tar.gz | tar -xz -C /usr/local/bin
+# התקנת curl אם חסר
+RUN mkdir -p /usr/local/bin && apt-get update && apt-get install -y curl
 
 # אם זו תמונה של פייתון - נתקין עם pip
 RUN if [[ "{{BASE_IMAGE}}" == python* ]]; then pip install {{PACKAGES}}; fi
@@ -9,10 +9,12 @@ RUN if [[ "{{BASE_IMAGE}}" == python* ]]; then pip install {{PACKAGES}}; fi
 # אם זו תמונה של Node.js - נתקין עם npm
 RUN if [[ "{{BASE_IMAGE}}" == node* ]]; then npm install -g {{PACKAGES}}; fi
 
-# אם זו תמונה של Java - נתקין עם Maven
+# אם זו תמונה של Java - נתקין Maven ונוריד חבילות
 RUN if [[ "{{BASE_IMAGE}}" == openjdk* ]]; then \
-    curl -fsSL https://apache.osuosl.org/maven/maven-3/3.8.5/binaries/apache-maven-3.8.5-bin.tar.gz | tar -xz -C /usr/local/bin && \
-    /usr/local/bin/apache-maven-3.8.5/bin/mvn dependency:get -Dartifact={{PACKAGES}}; \
+    curl -fsSL https://downloads.apache.org/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.tar.gz | tar -xz -C /usr/local && \
+    ln -s /usr/local/apache-maven-3.9.4/bin/mvn /usr/bin/mvn && \
+    mvn dependency:get -Dartifact={{PACKAGES}}; \
 fi
 
 CMD ["bash"]
+
