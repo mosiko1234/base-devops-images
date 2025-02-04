@@ -9,11 +9,10 @@ RUN if [[ "{{BASE_IMAGE}}" == python* ]]; then pip install {{PACKAGES}}; fi
 # אם זו תמונה של Node.js - נתקין עם npm
 RUN if [[ "{{BASE_IMAGE}}" == node* ]]; then npm install -g {{PACKAGES}}; fi
 
-# אם זו תמונה של Java - נתקין Maven ונוריד חבילות
 RUN if [[ "{{BASE_IMAGE}}" == openjdk* ]]; then \
     curl -fsSL https://downloads.apache.org/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.tar.gz | tar -xz -C /usr/local && \
     ln -s /usr/local/apache-maven-3.9.4/bin/mvn /usr/bin/mvn && \
-    mvn dependency:get -Dartifact={{PACKAGES}}; \
+    for package in {{PACKAGES}}; do mvn dependency:get -Dartifact=$package; done; \
 fi
 
 CMD ["bash"]
