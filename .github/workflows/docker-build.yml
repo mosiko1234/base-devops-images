@@ -1,0 +1,44 @@
+name: Build Docker Images
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-matrix:
+    runs-on: ubuntu-latest
+
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Read YAML Files
+        id: set-matrix
+        run: |
+          python .github/scripts/generate_matrix.py > matrix.json
+          echo "matrix=$(cat matrix.json)" >> $GITHUB_ENV
+
+  build-docker:
+    needs: build-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(env.matrix) }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Build Docker Image
+        run: |
+          DOCKER_TAG="${{ matrix.language }}:${{ matrix.version }}"
+          echo "Building Image: $DOCKER_TAG"
+          docker build --build-arg BASE_IMAGE=${{ matrix.base_image }} --build-arg PACKAGES="${{ matrix.packages }}" -t myrepo/$DOCKER_TAG .
+          
+      - name: Push Docker Image
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          docker push myrepo/${{ matrix.language }}:${{ matrix.version }}

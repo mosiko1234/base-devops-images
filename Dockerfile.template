@@ -1,0 +1,9 @@
+FROM {{BASE_IMAGE}}
+
+RUN apt-get update && apt-get install -y curl
+
+{% if PACKAGES %}
+RUN pip install {{PACKAGES}}
+{% endif %}
+
+CMD ["bash"]

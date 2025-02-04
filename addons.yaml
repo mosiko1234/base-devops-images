@@ -1,0 +1,8 @@
+addons:
+  python:
+    - numpy
+    - pandas
+    - flask
+  node:
+    - express
+    - axios
