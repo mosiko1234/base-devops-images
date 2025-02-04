@@ -42,7 +42,7 @@ jobs:
 
       - name: Set Image Tag
         run: |
-          DOCKER_TAG="${{ secrets.DOCKER_USERNAME }}/${{ matrix.language }}:${{ matrix.version }}"
+          DOCKER_TAG="${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.language }}:${{ matrix.version }}"
           echo "DOCKER_TAG=$DOCKER_TAG" >> $GITHUB_ENV
 
       - name: Build Docker Image
