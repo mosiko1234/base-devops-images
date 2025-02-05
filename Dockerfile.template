@@ -1,5 +1,6 @@
-# בחירת בסיס רזה (Debian Slim)
-FROM {{BASE_IMAGE}}-slim AS base
+# שלב בסיסי להתקנות משותפות
+FROM {{BASE_IMAGE}} AS base
+
 
 # משתנים לגרסאות הכלים
 ENV YQ_VERSION=v4.40.5 \
