@@ -51,10 +51,10 @@ jobs:
           echo "Building Image: $DOCKER_TAG"
           docker build -t "$DOCKER_TAG" .
 
-      - name: Save Docker Image as an Artefact
-        run: |
-          docker save -o image.tar "$DOCKER_TAG"
-        if: always()
+#      - name: Save Docker Image as an Artefact
+#        run: |
+#          docker save -o image.tar "$DOCKER_TAG"
+
 
 #      - name: Upload Docker Image Artifact
 #        uses: actions/upload-artifact@v4
