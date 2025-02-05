@@ -1,7 +1,11 @@
 FROM {{BASE_IMAGE}}
 
-# התקנת חבילות בסיסיות (מערכת הפעלה)
-RUN apt-get update && apt-get install -y {{BASE_PACKAGES}}
+# התקנת חבילות מערכת הפעלה רק אם יש חבילות להורדה
+RUN if [ -n "{{BASE_PACKAGES}}" ]; then \
+      apt-get update && apt-get install -y {{BASE_PACKAGES}}; \
+    else \
+      echo "No base packages to install"; \
+    fi
 
 # התקנת חבילות בהתאם לשפה
 RUN case "{{BASE_IMAGE}}" in \

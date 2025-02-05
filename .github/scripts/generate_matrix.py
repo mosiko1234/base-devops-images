@@ -8,8 +8,8 @@ with open("languages.yaml") as f:
 with open("addons.yaml") as f:
     addons = yaml.safe_load(f)["addons"]
 
-# שמירת תלויות בסיסיות (כגון curl, git, wget)
-base_packages = " ".join(addons.get("base_packages", []))
+# שמירת חבילות מערכת הפעלה (אם אין, נוסיף ברירת מחדל)
+base_packages = " ".join(addons.get("base_packages", [])) or "curl git"
 
 matrix = []
 
@@ -23,7 +23,7 @@ for lang, versions in languages.items():
             "version": version,
             "base_image": base_image,
             "base_packages": base_packages,  # חבילות מערכת הפעלה
-            "packages": lang_packages        # חבילות ספציפיות לשפה
+            "packages": lang_packages        # חבילות לשפה הספציפית
         })
 
 # כתיבת המטריצה כקובץ JSON קריא
