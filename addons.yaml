@@ -4,6 +4,12 @@ addons:
     - git
     - wget
     - unzip
+    - jq
+    - bash
+    - ca-certificates
+    - gnupg
+    - openssh-client
+    - apt-transport-https
   python:
     - numpy
     - pandas
