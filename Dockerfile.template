@@ -1,58 +1,39 @@
-FROM {{BASE_IMAGE}}
+# שלב בסיסי להתקנות משותפות
+FROM {{BASE_IMAGE}} AS base
+
+# משתנים לגרסאות הכלים
+ENV YQ_VERSION=v4.40.5 \
+    HELM_VERSION=v3.13.3
 
 # התקנת חבילות מערכת הפעלה רק אם יש חבילות להורדה
 RUN if [ -n "{{BASE_PACKAGES}}" ]; then \
-      apt-get update && apt-get install -y {{BASE_PACKAGES}}; \
+      apt-get update && apt-get install -y --no-install-recommends {{BASE_PACKAGES}} && \
+      apt-get clean && rm -rf /var/lib/apt/lists/*; \
     else \
       echo "No base packages to install"; \
     fi
 
-ARG YQ_VERSION=v4.40.5
+# התקנת yq ו-helm בצורה בטוחה יותר
 RUN wget -qO /usr/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" && \
-    chmod +x /usr/bin/yq
-
-ARG HELM_VERSION=v3.13.3
-RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
+    chmod +x /usr/bin/yq && \
+    curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
     chmod +x get_helm.sh && \
     DESIRED_VERSION=${HELM_VERSION} ./get_helm.sh && \
     rm get_helm.sh
 
-ARG TARGETARCH
-ARG OC_VERSION=4.13.0
-RUN case "${TARGETARCH}" in \
-        "amd64") ARCH="x86_64" ;; \
-        "arm64") ARCH="aarch64" ;; \
-        "ppc64le") ARCH="ppc64le" ;; \
-        "s390x") ARCH="s390x" ;; \
-        *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
-    esac && \
-    curl -L --retry 5 --retry-delay 2 -o oc.tar.gz "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable-${OC_VERSION}/openshift-client-linux-${ARCH}.tar.gz" && \
-    tar -xzf oc.tar.gz -C /usr/local/bin && \
-    chmod +x /usr/local/bin/oc && \
-    rm -f oc.tar.gz kubectl && \
-    oc version --client || true
-
-ARG ARGO_VERSION=v2.9.3
-RUN curl -sSL -o /usr/local/bin/argocd "https://github.com/argoproj/argo-cd/releases/download/${ARGO_VERSION}/argocd-linux-amd64" && \
-    chmod +x /usr/local/bin/argocd
-
-ARG GITLAB_RUNNER_VERSION=v16.5.0
-RUN curl -sSL -o /usr/local/bin/gitlab-runner "https://gitlab-runner-downloads.s3.amazonaws.com/${GITLAB_RUNNER_VERSION}/binaries/gitlab-runner-linux-amd64" && \
-    chmod +x /usr/local/bin/gitlab-runner
-
-RUN yq --version && \
-    helm version --short && \
-    if [ -f "/usr/local/bin/oc" ]; then oc version --client; else echo "oc not available"; fi && \
-    argocd version --client && \
-    gitlab-runner --version
+# שלב שני שמוסיף את חבילות השפה המתאימות
+FROM base AS final
 
 # התקנת חבילות בהתאם לשפה
 RUN case "{{BASE_IMAGE}}" in \
-  python*) pip install {{PACKAGES}} ;; \
-  node*) npm install -g {{PACKAGES}} ;; \
+  python*) \
+    pip install --no-cache-dir {{PACKAGES}} ;; \
+  node*) \
+    npm install -g --no-progress {{PACKAGES}} ;; \
   openjdk*) \
     curl -fsSL https://downloads.apache.org/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.tar.gz | tar -xz -C /usr/local && \
     ln -s /usr/local/apache-maven-3.9.4/bin/mvn /usr/bin/mvn ;; \
 esac
 
+# ברירת מחדל ל-CMD
 CMD ["bash"]
