@@ -1,20 +1,13 @@
 # שלב בסיסי להתקנות משותפות
 FROM {{BASE_IMAGE}} AS base
 
-
 # משתנים לגרסאות הכלים
 ENV YQ_VERSION=v4.40.5 \
-    HELM_VERSION=v3.13.3 \
-    USERNAME=appuser \
-    APP_HOME=/app
-
-# יצירת תיקיית עבודה מאובטחת
-WORKDIR $APP_HOME
+    HELM_VERSION=v3.13.3
 
 # התקנת חבילות מערכת הפעלה רק אם יש חבילות להורדה
 RUN if [ -n "{{BASE_PACKAGES}}" ]; then \
-      apt-get update && \
-      apt-get install -y --no-install-recommends {{BASE_PACKAGES}} && \
+      apt-get update && apt-get install -y --no-install-recommends {{BASE_PACKAGES}} && \
       apt-get clean && rm -rf /var/lib/apt/lists/*; \
     else \
       echo "No base packages to install"; \
@@ -27,13 +20,6 @@ RUN wget -qO /usr/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ
     chmod +x get_helm.sh && \
     DESIRED_VERSION=${HELM_VERSION} ./get_helm.sh && \
     rm get_helm.sh
-
-# יצירת משתמש ללא הרשאות root והגדרת בעלות על הקבצים
-RUN useradd -m -s /bin/bash $USERNAME && \
-    chown -R $USERNAME:$USERNAME $APP_HOME
-
-# שינוי המשתמש ל-non-root
-USER $USERNAME
 
 # שלב שני שמוסיף את חבילות השפה המתאימות
 FROM base AS final
@@ -49,13 +35,5 @@ RUN case "{{BASE_IMAGE}}" in \
     ln -s /usr/local/apache-maven-3.9.4/bin/mvn /usr/bin/mvn ;; \
 esac
 
-# הוספת בדיקת בריאות
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD curl -f http://localhost || exit 1
-
-# הוספת מידע שימושי על ה-Image
-LABEL maintainer="Moshe Eliya moshee@kayhut.com" \
-      description="Multi-purpose DevOps base image" \
-      version="1.0.0"
-
-# שימוש ב-ENTRYPOINT לניהול ברירת מחדל
-ENTRYPOINT ["bash"]
+# ברירת מחדל ל-CMD
+CMD ["bash"]
