@@ -56,12 +56,12 @@ jobs:
           docker save -o image.tar "$DOCKER_TAG"
         if: always()
 
-      - name: Upload Docker Image Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-image-${{ matrix.language }}-${{ matrix.version }}
-          path: image.tar
-          compression-level: 0  # מומלץ לשמירה על מהירות ביצועים
+#      - name: Upload Docker Image Artifact
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: docker-image-${{ matrix.language }}-${{ matrix.version }}
+#          path: image.tar
+#          compression-level: 0  # מומלץ לשמירה על מהירות ביצועים
 
 
       - name: Login to Docker Hub
