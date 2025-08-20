@@ -96,7 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python_version: [3.11, 3.12]
+        python_version: [3.11, 3.12, 3.12.10]
 
     steps:
     - name: Checkout Code
@@ -126,7 +126,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python_version: [3.11, 3.12]
+        python_version: [3.11, 3.12, 3.12.10]
 
     steps:
     - name: Log in to DockerHub
