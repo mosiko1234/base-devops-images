@@ -251,7 +251,9 @@ jobs:
         path: build-report.md
 
     - name: Notify Slack
-      if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
+      if: ${{ env.SLACK_URL != '' }}
+      env:
+        SLACK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       run: |
         REPORT=$(cat build-report.md | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
         curl -X POST -H 'Content-type: application/json' \
