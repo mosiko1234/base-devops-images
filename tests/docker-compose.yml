@@ -11,7 +11,7 @@ services:
       chmod +x /tests/e2e/test.sh;
       echo 'Testing Python Image';
       /tests/e2e/test.sh;
-      python${PYTHON_VERSION} --version;
+      python --version;
       pip --version;
       pip install requests;
       echo 'Python tests passed';
@@ -34,4 +34,22 @@ services:
       javac Test.java;
       java Test;
       echo 'Java tests passed';
+      "
+
+  nodejs-tests:
+    image: "${DOCKERHUB_REPO}/nodejs-${NODEJS_VERSION}:latest"
+    volumes:
+      - ./e2e:/tests/e2e
+    environment:
+      - NODEJS_VERSION=${NODEJS_VERSION}
+    entrypoint: >
+      /bin/bash -c "
+      set -e;
+      chmod +x /tests/e2e/test.sh;
+      echo 'Testing Node.js Image';
+      /tests/e2e/test.sh;
+      node --version;
+      npm --version;
+      python3 --version;
+      echo 'Node.js tests passed';
       "

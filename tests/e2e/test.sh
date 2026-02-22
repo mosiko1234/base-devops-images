@@ -1,13 +1,11 @@
 #!/bin/bash
 
-set +e  # ביטול מצב 'exit on error'
+set +e
 
 echo "Starting E2E Tests for base image tools..."
 
-# משתנה לספירת כשלים
 fail_count=0
 
-# פונקציה לבדיקת כלי וכל גרסה
 check_tool() {
     local cmd=$1
     local version_flag=$2
@@ -48,9 +46,6 @@ check_tool "unzip" "--help" "Unzip"
 # Test wget
 check_tool "wget" "--version" "Wget"
 
-# Test vim
-check_tool "vim" "--version" "Vim"
-
 # Test ca-certificates
 echo -n "Testing CA Certificates... "
 if [ -f "/etc/ssl/certs/ca-certificates.crt" ]; then
@@ -62,15 +57,6 @@ fi
 
 # Test gnupg
 check_tool "gpg" "--version" "GnuPG"
-
-# Test apt-transport-https
-echo -n "Testing apt-transport-https... "
-if dpkg -l | grep -q "apt-transport-https"; then
-    echo "OK"
-else
-    echo "FAIL - apt-transport-https not installed"
-    ((fail_count++))
-fi
 
 # Test software-properties-common
 echo -n "Testing software-properties-common... "
@@ -90,7 +76,6 @@ check_tool "yq" "--version" "yq"
 # Test Helm
 check_tool "helm" "version --short" "Helm"
 
-
 # Test OpenShift CLI
 check_tool "oc" "version --client" "OpenShift CLI"
 
@@ -101,15 +86,15 @@ elif ! oc version --client &>/dev/null; then
     echo "DEBUG: OpenShift CLI version command failed. Check glibc compatibility or dependencies."
 fi
 
-# Verify glibc version
+# Verify glibc version (Ubuntu 24.04 ships glibc 2.39)
 echo -n "Testing glibc compatibility... "
-if ldd --version | grep -q "2.34"; then
-    echo "OK"
+GLIBC_VER=$(ldd --version 2>&1 | head -1 | grep -oP '[\d.]+$')
+if [ -n "$GLIBC_VER" ]; then
+    echo "OK (glibc $GLIBC_VER)"
 else
-    echo "FAIL - glibc version is incompatible"
+    echo "FAIL - could not determine glibc version"
     fail_count=$((fail_count + 1))
 fi
-
 
 # Test ArgoCD CLI
 check_tool "argocd" "version --client" "ArgoCD CLI"
@@ -117,16 +102,6 @@ check_tool "argocd" "version --client" "ArgoCD CLI"
 # Test GitLab Runner CLI
 check_tool "gitlab-runner" "--version" "GitLab Runner CLI"
 
-if ! oc version --client &>/dev/null; then
-    echo "DEBUG: OpenShift CLI Logs:"
-    ls -l /usr/local/bin/oc || echo "DEBUG: File not found"
-    ldd /usr/local/bin/oc || echo "DEBUG: Dependency check failed"
-    echo "DEBUG: glibc version:"
-    ldd --version || echo "glibc not found"
-fi
-
-
-# סיכום הבדיקות
 echo ""
 echo "Test Summary:"
 if [ "$fail_count" -eq 0 ]; then

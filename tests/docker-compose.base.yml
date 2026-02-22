@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   base-tests:
     image: "${DOCKERHUB_REPO}/base-image:latest"
@@ -13,4 +11,3 @@ services:
       /tests/e2e/test.sh;
       echo 'Base tests passed';
       "
-

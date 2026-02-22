@@ -1,5 +1,5 @@
-# Start with Ubuntu 20.04
-FROM ubuntu:20.04
+# Start with Ubuntu 24.04 LTS
+FROM ubuntu:24.04
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -13,13 +13,8 @@ RUN useradd -m -s /bin/bash devops \
     && mkdir -p /workspace \
     && chown devops:devops /workspace
 
-# Update system packages and install essential tools in a single layer
-# Group all installations to reduce layers and image size
+# Update system packages and install essential tools
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        software-properties-common \
-    && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
-    && apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
         libxml2-utils \
@@ -34,38 +29,39 @@ RUN apt-get update \
         wget \
         ca-certificates \
         openssh-client \
-        apt-transport-https \
         gnupg \
-    # Clean up apt cache and unnecessary files
+        software-properties-common \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /var/cache/apt/* \
-    && rm -rf /tmp/* \
-    && rm -rf /var/tmp/*
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/* /tmp/* /var/tmp/*
 
-# Install tools in a single layer to reduce image size
-RUN cd /tmp \
-    # Install AWS CLI
-    && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
-    && unzip awscliv2.zip \
+# Install tools — architecture-aware for multi-platform builds
+RUN ARCH=$(uname -m) \
+    && case "$ARCH" in \
+        x86_64)  AWS_ARCH="x86_64"; BIN_ARCH="amd64" ;; \
+        aarch64) AWS_ARCH="aarch64"; BIN_ARCH="arm64" ;; \
+        *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
+    esac \
+    && cd /tmp \
+    # AWS CLI
+    && curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-${AWS_ARCH}.zip" -o awscliv2.zip \
+    && unzip -q awscliv2.zip \
     && ./aws/install \
     && rm -rf aws awscliv2.zip \
-    # Install yq
-    && curl -sL "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64" -o /usr/bin/yq \
+    # yq
+    && curl -sSL "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${BIN_ARCH}" -o /usr/bin/yq \
     && chmod +x /usr/bin/yq \
-    # Install Helm
+    # Helm (auto-detects architecture)
     && curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash \
-    # Install OpenShift CLI
-    && curl -L "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.8.0/openshift-client-linux.tar.gz" -o oc.tar.gz \
-    && tar -xvzf oc.tar.gz -C /usr/local/bin/ \
+    # OpenShift CLI (stable channel, arch-aware)
+    && curl -sSL "https://mirror.openshift.com/pub/openshift-v4/${ARCH}/clients/ocp/stable/openshift-client-linux.tar.gz" -o oc.tar.gz \
+    && tar -xzf oc.tar.gz -C /usr/local/bin/ \
     && chmod +x /usr/local/bin/oc \
-    && rm -f oc.tar.gz \
-    && rm -f /usr/local/bin/README.md \
-    # Install ArgoCD CLI
-    && curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 \
+    && rm -f oc.tar.gz /usr/local/bin/README.md \
+    # ArgoCD CLI
+    && curl -sSL -o /usr/local/bin/argocd "https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-${BIN_ARCH}" \
     && chmod +x /usr/local/bin/argocd \
-    # Install GitLab Runner
-    && curl -L "https://gitlab-runner-downloads.s3.amazonaws.com/v16.5.0/binaries/gitlab-runner-linux-amd64" -o /usr/local/bin/gitlab-runner \
+    # GitLab Runner
+    && curl -sSL "https://gitlab-runner-downloads.s3.amazonaws.com/v18.9.0/binaries/gitlab-runner-linux-${BIN_ARCH}" -o /usr/local/bin/gitlab-runner \
     && chmod +x /usr/local/bin/gitlab-runner \
     # Clean up
     && rm -rf /tmp/*

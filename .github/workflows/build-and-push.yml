@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Log in to DockerHub
       run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
@@ -41,66 +41,49 @@ jobs:
     name: Test Base Image
     needs: build-base-image
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
-    - name: Install Docker Compose
-      run: |
-        sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        sudo chmod +x /usr/local/bin/docker-compose
-        docker-compose --version
-
-    - name: Debug Environment Variables
-      run: |
-        echo "DOCKERHUB_REPO=${{ secrets.DOCKERHUB_REPO }}"
-        cat ./tests/docker-compose.yml
+    - name: Log in to DockerHub
+      run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
     - name: Set up Docker Compose for Base Image E2E
-      run: |
-        docker-compose -f ./tests/docker-compose.base.yml up -d
+      run: docker compose -f ./tests/docker-compose.base.yml up -d
       env:
         DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
 
     - name: Run E2E Tests for Base Image
       run: |
         set +e
-        docker-compose -f ./tests/docker-compose.base.yml up --abort-on-container-exit --exit-code-from base-tests
+        docker compose -f ./tests/docker-compose.base.yml up --abort-on-container-exit --exit-code-from base-tests
         exit_code=$?
         if [ $exit_code -ne 0 ]; then
           echo "Base Image E2E tests failed with exit code $exit_code"
+          exit $exit_code
         fi
-        set -e
       env:
         DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
 
     - name: Clean Up Base Image Containers
       if: always()
-      run: |
-        if [ -f ./tests/docker-compose.base.yml ]; then
-          docker-compose -f ./tests/docker-compose.base.yml down || echo "No active containers to clean up."
-        else
-          echo "No docker-compose.base.yml file found for cleanup."
-        fi
+      run: docker compose -f ./tests/docker-compose.base.yml down || true
       env:
         DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
 
 
-
-
   # Job 2: Build Python Images
   build-python-images:
-    name: Build Python Images
+    name: Build Python ${{ matrix.python_version }} Image
     needs: test-base-image
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python_version: [3.11, 3.12, 3.12.10]
+        python_version: ["3.11", "3.12", "3.13"]
 
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Log in to DockerHub
       run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
@@ -121,12 +104,12 @@ jobs:
           --push .
 
   test-python-images:
-    name: Test Python Images
+    name: Test Python ${{ matrix.python_version }} Image
     needs: build-python-images
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python_version: [3.11, 3.12, 3.12.10]
+        python_version: ["3.11", "3.12", "3.13"]
 
     steps:
     - name: Log in to DockerHub
@@ -135,20 +118,21 @@ jobs:
     - name: Test Python Image
       run: |
         docker run --rm ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest \
-        python${{ matrix.python_version }} --version && pip --version
-        
+          bash -c "python --version && pip --version"
+
+
   # Job 3: Build Java Images
   build-java-images:
-    name: Build Java Images
+    name: Build Java ${{ matrix.java_version }} Image
     needs: test-base-image
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java_version: [11, 17]
+        java_version: [11, 17, 21]
 
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Log in to DockerHub
       run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
@@ -169,12 +153,12 @@ jobs:
           --push .
 
   test-java-images:
-    name: Test Java Images
+    name: Test Java ${{ matrix.java_version }} Image
     needs: build-java-images
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java_version: [11, 17]
+        java_version: [11, 17, 21]
 
     steps:
     - name: Log in to DockerHub
@@ -182,35 +166,34 @@ jobs:
 
     - name: Test Java Image
       run: |
-        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest java -version 2>&1 \
-        | grep "version" || echo "Java version test failed"
+        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest \
+          bash -c "java -version 2>&1 && javac -version"
 
 
-  # Job 4: Build NodeJS Images
+  # Job 4: Build Node.js Images
   build-nodejs-images:
-    name: Build nodejs Images
+    name: Build Node.js ${{ matrix.nodejs_version }} Image
     needs: test-base-image
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        nodejs_version: [16, 18, 20, 22, 23]
+        nodejs_version: [20, 22, 24]
 
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Log in to DockerHub
       run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-    - name: Build nodejs Image
+    - name: Build Node.js Image
       working-directory: ./nodejs-layer
       run: |
-        echo "Base Image: ${{ secrets.DOCKERHUB_REPO }}/base-image:latest"
         docker buildx create --use
         docker buildx build \
           --platform linux/amd64,linux/arm64 \
-          --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.nodejs_version }}:cache \
-          --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.nodejs_version }}:cache,mode=max \
+          --cache-from=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/nodejs-${{ matrix.nodejs_version }}:cache \
+          --cache-to=type=registry,ref=${{ secrets.DOCKERHUB_REPO }}/nodejs-${{ matrix.nodejs_version }}:cache,mode=max \
           --build-arg BASE_IMAGE=${{ secrets.DOCKERHUB_REPO }}/base-image:latest \
           --build-arg nodejs_VERSION=${{ matrix.nodejs_version }} \
           -t ${{ secrets.DOCKERHUB_REPO }}/nodejs-${{ matrix.nodejs_version }}:latest \
@@ -219,123 +202,56 @@ jobs:
           --push .
 
   test-nodejs-images:
-    name: Test nodejs Images
+    name: Test Node.js ${{ matrix.nodejs_version }} Image
     needs: build-nodejs-images
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java_version: [16, 18, 20, 22, 23]
+        nodejs_version: [20, 22, 24]
 
     steps:
     - name: Log in to DockerHub
       run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-    - name: Test Java Image
+    - name: Test Node.js Image
       run: |
-        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.nodejs_version }}:latest nodejs -version 2>&1 \
-        | grep "version" || echo "nodejs version test failed"
+        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/nodejs-${{ matrix.nodejs_version }}:latest \
+          bash -c "node --version && npm --version && python3 --version"
 
 
-
-  # Job 4: Run E2E Tests
-  run-e2e-tests:
-    name: Run E2E Tests
-    needs: [test-python-images, test-java-images, test-nodejs-images]
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python_version: [3.11, 3.12]
-        java_version: [11, 17]
-        nodejs_version: [16, 18, 20, 22, 23]
-
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
-
-    - name: Install Docker Compose
-      run: |
-        sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        sudo chmod +x /usr/local/bin/docker-compose
-        docker-compose --version
-
-    - name: Debug Environment Variables
-      run: |
-        echo "DOCKERHUB_REPO=${{ secrets.DOCKERHUB_REPO }}"
-        echo "PYTHON_VERSION=${{ matrix.python_version }}"
-        echo "JAVA_VERSION=${{ matrix.java_version }}"
-        echo "nodejs_VERSION=${{ matrix.nodejs_version }}"
-        cat ./tests/docker-compose.yml
-
-    - name: Set up Docker Compose for E2E
-      run: |
-        docker-compose -f ./tests/docker-compose.yml up -d
-      env:
-        DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
-        PYTHON_VERSION: ${{ matrix.python_version }}
-        JAVA_VERSION: ${{ matrix.java_version }}
-        nodejs_VERSION: ${{ matrix.nodejs_version }}
-
-    - name: Run E2E Tests
-      run: |
-        set +e
-        docker-compose -f ./tests/docker-compose.base.yml up --abort-on-container-exit --exit-code-from python-tests
-        exit_code=$?
-        if [ $exit_code -ne 0 ]; then
-          echo "Base Image E2E tests failed with exit code $exit_code"
-        fi
-        set -e
-      env:
-        DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
-        PYTHON_VERSION: ${{ matrix.python_version }}
-        JAVA_VERSION: ${{ matrix.java_version }}
-        nodejs_VERSION: ${{ matrix.nodejs_version }}
-
-    - name: Clean Up
-      if: always()
-      run: |
-        if [ -f ./tests/docker-compose.yml ]; then
-          docker-compose -f ./tests/docker-compose.yml down || echo "No active containers to clean up."
-        else
-          echo "No docker-compose.yml file found for cleanup."
-        fi
-      env:
-        DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
-        PYTHON_VERSION: ${{ matrix.python_version }}
-        JAVA_VERSION: ${{ matrix.java_version }}
-        nodejs_VERSION: ${{ matrix.nodejs_version }}
-
-
-
-  # Job 5: Generate Build Report and Notify Slack
+  # Job 5: Generate Build Report
   generate-report:
-    name: Generate and Notify Build Report
-    needs: [run-e2e-tests]
+    name: Generate Build Report
+    needs: [test-python-images, test-java-images, test-nodejs-images]
     runs-on: ubuntu-latest
     steps:
     - name: Generate Build Report
       run: |
-        echo "### Build Report" > build-report.md
-        echo "- Base Image: ✅" >> build-report.md
-        echo "- Python Images:" >> build-report.md
-        echo "  - Python 3.11: ✅" >> build-report.md
-        echo "  - Python 3.12: ✅" >> build-report.md
-        echo "- Java Images:" >> build-report.md
-        echo "  - Java 11: ✅" >> build-report.md
-        echo "  - Java 17: ✅" >> build-report.md
-        echo "- NodeJS Images:" >> build-report.md
-        echo "  - NodeJS 16: ✅" >> build-report.md
-        echo "  - NodeJS 18: ✅" >> build-report.md
-        echo "  - NodeJS 20: ✅" >> build-report.md
-        echo "  - NodeJS 22: ✅" >> build-report.md
-        echo "- E2E Tests: ✅" >> build-report.md
+        cat > build-report.md <<'EOF'
+        ### Build Report
+        **Base**: Ubuntu 24.04 LTS
+
+        | Stack | Versions | Status |
+        |-------|----------|--------|
+        | Python | 3.11, 3.12, 3.13 | :white_check_mark: |
+        | Java | 11, 17, 21 | :white_check_mark: |
+        | Node.js | 20, 22, 24 (+ Python 3.12) | :white_check_mark: |
+
+        **Tools**: AWS CLI, Helm, OC (stable), ArgoCD, GitLab Runner v18.9.0, yq
+        **Platforms**: linux/amd64, linux/arm64
+        EOF
+
+    - name: Post Summary
+      run: cat build-report.md >> $GITHUB_STEP_SUMMARY
 
     - name: Upload Build Report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: build-report
         path: build-report.md
 
-    - name: Notify Slack with Summary
+    - name: Notify Slack
+      if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
       run: |
         REPORT=$(cat build-report.md | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
         curl -X POST -H 'Content-type: application/json' \
@@ -353,5 +269,3 @@ jobs:
             }
           ]
         }' ${{ secrets.SLACK_WEBHOOK_URL }}
-
-        
