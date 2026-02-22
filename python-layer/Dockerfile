@@ -29,7 +29,9 @@ RUN set -ex \
     && ln -sf /usr/bin/python${PYTHON_VERSION} /usr/local/bin/python3 \
     # Install pip via get-pip.py for the target Python version
     # --break-system-packages needed on Ubuntu 24.04 (PEP 668)
-    && curl -sS https://bootstrap.pypa.io/get-pip.py | python${PYTHON_VERSION} -- --break-system-packages \
+    && curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py \
+    && python${PYTHON_VERSION} /tmp/get-pip.py --break-system-packages \
+    && rm -f /tmp/get-pip.py \
     && pip install --no-cache-dir --break-system-packages setuptools wheel \
     # Verify installation
     && python --version \
