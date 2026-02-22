@@ -12,7 +12,7 @@ ENV PYTHONUNBUFFERED=1 \
 # Switch to root for installations
 USER root
 
-# Install Python and essential tools
+# Install Python from deadsnakes PPA
 RUN set -ex \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -23,15 +23,14 @@ RUN set -ex \
         python${PYTHON_VERSION} \
         python${PYTHON_VERSION}-dev \
         python${PYTHON_VERSION}-venv \
-        python3-pip \
-        python3-wheel \
-        python3-setuptools \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && ln -sf /usr/bin/python${PYTHON_VERSION} /usr/local/bin/python \
     && ln -sf /usr/bin/python${PYTHON_VERSION} /usr/local/bin/python3 \
-    # Install pip for specific Python version
+    # Install pip via get-pip.py for the target Python version
+    # (don't use python3-pip from apt — conflicts with deadsnakes versions)
     && curl -sS https://bootstrap.pypa.io/get-pip.py | python${PYTHON_VERSION} \
+    && pip install --no-cache-dir setuptools wheel \
     # Verify installation
     && python --version \
     && pip --version

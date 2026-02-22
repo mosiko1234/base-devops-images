@@ -117,8 +117,8 @@ jobs:
 
     - name: Test Python Image
       run: |
-        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest \
-          bash -c "python --version && pip --version"
+        docker run --rm --entrypoint bash ${{ secrets.DOCKERHUB_REPO }}/python-${{ matrix.python_version }}:latest \
+          -c "python --version && pip --version"
 
 
   # Job 3: Build Java Images
@@ -166,8 +166,8 @@ jobs:
 
     - name: Test Java Image
       run: |
-        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest \
-          bash -c "java -version 2>&1 && javac -version"
+        docker run --rm --entrypoint bash ${{ secrets.DOCKERHUB_REPO }}/java-${{ matrix.java_version }}:latest \
+          -c "java -version 2>&1 && javac -version"
 
 
   # Job 4: Build Node.js Images
@@ -215,8 +215,8 @@ jobs:
 
     - name: Test Node.js Image
       run: |
-        docker run --rm ${{ secrets.DOCKERHUB_REPO }}/nodejs-${{ matrix.nodejs_version }}:latest \
-          bash -c "node --version && npm --version && python3 --version"
+        docker run --rm --entrypoint bash ${{ secrets.DOCKERHUB_REPO }}/nodejs-${{ matrix.nodejs_version }}:latest \
+          -c "node --version && npm --version && python3 --version"
 
 
   # Job 5: Generate Build Report
